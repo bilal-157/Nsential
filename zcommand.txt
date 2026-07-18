@@ -1,0 +1,59 @@
+""" Show all running containers. """
+docker ps
+
+"""Show all containers, including stopped ones."""
+docker ps -a
+
+"""List all Docker images stored locally."""
+docker images
+
+"""Create (if needed) and start all services defined in docker-compose.yml in the background."""
+docker compose up -d
+
+"""Stop and remove containers, networks, and other Compose resources."""
+docker compose down
+
+"""Restart all services in the Compose project."""
+docker compose restart
+
+"""View and continuously follow logs from all Compose services."""
+docker compose logs -f
+
+"""Show the status of services managed by Docker Compose."""
+docker compose ps
+
+"""Open an interactive Bash shell inside a running container."""
+docker exec -it <container> bash
+
+"""Open a shell inside the app service defined in your Compose file."""
+docker compose exec app bash
+
+"""Build a Docker image from the current directory's Dockerfile."""
+docker build -t image .
+
+"""Download an image from a registry such as Docker Hub."""
+docker pull
+
+"""Upload a local image to a container registry."""
+docker push
+
+"""Start one or more existing stopped containers."""
+docker start
+
+"""Gracefully stop a running container."""
+docker stop
+
+"""Restart a running container."""
+docker restart
+
+"""Remove a stopped container."""
+docker rm
+
+"""Remove a Docker image from your local machine."""
+docker rmi
+
+"""List all Docker volumes."""
+docker volume ls
+
+"""Remove all unused containers, networks, images, and build cache to free disk space."""
+docker system prune -a
