@@ -1,3 +1,8 @@
+1.on google auth change the setting for deployment
+2.selec debug = false
+3.change the secret from .env
+
+
 """ Show all running containers. """
 docker ps
 
