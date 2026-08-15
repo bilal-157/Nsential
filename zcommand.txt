@@ -1,64 +1,473 @@
-1.on google auth change the setting for deployment
-2.selec debug = false
-3.change the secret from .env
+Post Page
+│
+├── Cached (1 hour)
+│   ├── Title
+│   ├── Content
+│   ├── Slug
+│   ├── Author
+│   ├── Category
+│   ├── Featured Image
+│   └── SEO
+│
+├── Live / Short Cache
+│   ├── Likes
+│   ├── Comments
+│   ├── Reviews
+│   └── View Count
+│
+└── Queue
+    └── Increment views
+
+----------------------- home page design ---------------------
+1) navbar with icon , search bar in center on left there should be about,contact,subccribe
+
+2) hero section with wording animation and on right their should be shown the latest post
+
+3) categories filter and all the posts(image , title,description , published date on image there should be shown the category) with pagination
+
+4) popular post suggestions and on right there should be small box to subcribe
+
+5) reviews of the posts with rating and data with post links 
 
 
-""" Show all running containers. """
-docker ps
+--------------------- docker/nginx/dafault.conf -----------------
+server {
+    listen 80;
+    server_name localhost;
+    root /var/www/html/public;
 
-"""Show all containers, including stopped ones."""
-docker ps -a
+    index index.php index.html;
 
-"""List all Docker images stored locally."""
-docker images
+    charset utf-8;
 
-"""Create (if needed) and start all services defined in docker-compose.yml in the background."""
-docker compose up -d
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
 
-"""Stop and remove containers, networks, and other Compose resources."""
-docker compose down
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
 
-"""Restart all services in the Compose project."""
-docker compose restart
+    error_page 404 /index.php;
 
-"""View and continuously follow logs from all Compose services."""
-docker compose logs -f
+    location ~ \.php$ {
+        fastcgi_pass app:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
 
-"""Show the status of services managed by Docker Compose."""
-docker compose ps
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
 
-"""Open an interactive Bash shell inside a running container."""
-docker exec -it <container> bash
+    client_max_body_size 20M;
+}
 
-"""Open a shell inside the app service defined in your Compose file."""
-docker compose exec app bash
+    ---------------- index(posts)
+     
+<!DOCTYPE html>
+<html lang="en" x-data="admin()" x-init="init()" :class="{ 'dark': dark }">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — Posts | The Daily Byte</title>
 
-"""Build a Docker image from the current directory's Dockerfile."""
-docker build -t image .
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          serif: ['"Fraunces"', 'ui-serif', 'Georgia', 'serif'],
+          sans: ['"Inter"', 'ui-sans-serif', 'system-ui'],
+        },
+        colors: {
+          cream:  '#FBEFEF',
+          blush:  '#FFE2E2',
+          rose:   '#F5CBCB',
+          lilac:  '#C5B3D3',
+          plum:   '#5B3A5F',
+          night:   { DEFAULT:'#1B1023', card:'#241531', line:'#3A2447' },
+          coral:   '#FF6B8B',
+          violet:  '#B983FF',
+        }
+      }
+    }
+  }
+</script>
 
-"""Download an image from a registry such as Docker Hub."""
-docker pull
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-"""Upload a local image to a container registry."""
-docker push
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-"""Start one or more existing stopped containers."""
-docker start
+<style>
+  html { scroll-behavior:smooth; }
+  body { font-family:'Inter', system-ui, sans-serif; }
+  .font-display { font-family:'Fraunces', serif; letter-spacing:-0.02em; }
+  .glass { backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); }
+  .link-underline { background-image: linear-gradient(currentColor, currentColor); background-position: 0 100%; background-repeat:no-repeat; background-size: 0 1.5px; transition: background-size .3s ease; }
+  .link-underline:hover { background-size: 100% 1.5px; }
+  .pill-active { background:#5B3A5F; color:#FFF3F3; }
+  .dark .pill-active { background:#FF6B8B; color:#1B1023; }
+  [x-cloak] { display:none !important; }
+  ::selection { background:#C5B3D3; color:#2A1633; }
+  .row-hover { transition: background-color .2s ease; }
+</style>
+</head>
 
-"""Gracefully stop a running container."""
-docker stop
+<body class="bg-cream dark:bg-night text-plum dark:text-rose antialiased min-h-screen">
 
-"""Restart a running container."""
-docker restart
+<!-- ============ NAV ============ -->
+<header class="sticky top-0 z-40 glass bg-cream/80 dark:bg-night/80 border-b border-rose/60 dark:border-night-line/60">
+  <nav class="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+    <a href="{{ route('admin.posts.index') }}" class="flex items-center gap-2 group shrink-0">
+      <span class="w-8 h-8 rounded-lg bg-plum dark:bg-coral grid place-items-center text-cream dark:text-night font-display font-bold">D</span>
+      <span class="font-display text-lg font-semibold tracking-tight">The Daily Byte</span>
+      <span class="ml-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-rose/70 dark:bg-night-card text-plum dark:text-coral">Admin</span>
+    </a>
 
-"""Remove a stopped container."""
-docker rm
+    <div class="flex items-center gap-3 shrink-0">
+      <a href="{{ route('admin.dashboard') }}" class="text-sm link-underline hidden sm:inline">Dashboard</a>
+      <a href="{{ route('admin.users.index') }}" class="text-sm link-underline hidden sm:inline">Users</a>
+      <span class="text-sm text-plum/60 dark:text-rose/60 hidden sm:inline">{{ auth()->user()->name }}</span>
+      <button @click="toggleTheme()" aria-label="Toggle theme" class="w-9 h-9 grid place-items-center rounded-full hover:bg-blush dark:hover:bg-night-card transition">
+        <svg x-show="!dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg x-show="dark" x-cloak width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </nav>
+</header>
 
-"""Remove a Docker image from your local machine."""
-docker rmi
+<!-- ============ MAIN ============ -->
+<main class="max-w-6xl mx-auto px-5 sm:px-8 py-10">
 
-"""List all Docker volumes."""
-docker volume ls
+  @if (session('success'))
+    <div class="mb-6 px-4 py-3 rounded-xl bg-lilac/40 dark:bg-violet/20 text-plum dark:text-violet text-sm font-medium">
+      {{ session('success') }}
+    </div>
+  @endif
 
-"""Remove all unused containers, networks, images, and build cache to free disk space."""
-docker system prune -a
+  <!-- header row -->
+  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div>
+      <h1 class="font-display text-2xl sm:text-3xl font-semibold">All Posts</h1>
+      <p class="text-sm text-plum/60 dark:text-rose/60 mt-1">{{ $posts->total() }} total</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <form method="GET" action="{{ route('admin.posts.index') }}">
+        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search posts..."
+          class="px-4 py-2 rounded-full bg-blush/50 dark:bg-night-card border border-rose/60 dark:border-night-line text-sm outline-none focus:border-lilac transition w-48" />
+      </form>
+      <a href="{{ route('admin.posts.create') }}"
+        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-plum dark:bg-coral text-cream dark:text-night text-sm font-medium hover:brightness-105 active:scale-95 transition">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New Post
+      </a>
+    </div>
+  </div>
+
+  <!-- table -->
+  <div class="bg-cream dark:bg-night-card border border-rose/60 dark:border-night-line rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-rose/60 dark:border-night-line text-left text-xs uppercase tracking-wider text-plum/60 dark:text-rose/60">
+          <th class="px-5 py-3">Title</th>
+          <th class="px-5 py-3 hidden sm:table-cell">Category</th>
+          <th class="px-5 py-3 hidden sm:table-cell">Status</th>
+          <th class="px-5 py-3 hidden sm:table-cell">Date</th>
+          <th class="px-5 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse ($posts as $post)
+        <tr class="row-hover border-b border-rose/40 dark:border-night-line/60 hover:bg-blush/40 dark:hover:bg-night/40">
+          <td class="px-5 py-4 font-medium max-w-xs truncate">{{ $post->title }}</td>
+          <td class="px-5 py-4 hidden sm:table-cell text-plum/60 dark:text-rose/60">{{ $post->category->name ?? '—' }}</td>
+          <td class="px-5 py-4 hidden sm:table-cell">
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider
+              {{ $post->status === 'published' ? 'bg-lilac/40 dark:bg-violet/20 text-plum dark:text-violet' : 'bg-rose/40 dark:bg-night text-plum/70 dark:text-rose/50' }}">
+              {{ $post->status }}
+            </span>
+          </td>
+          <td class="px-5 py-4 hidden sm:table-cell text-plum/60 dark:text-rose/60">{{ $post->created_at->format('M j, Y') }}</td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <a href="{{ route('admin.posts.edit', $post) }}" class="text-plum dark:text-violet link-underline text-sm font-medium">Edit</a>
+            <form action="{{ route('admin.posts.destroy', $post) }}" method="POST" class="inline"
+                  onsubmit="return confirm('Delete this post?')">
+              @csrf @method('DELETE')
+              <button type="submit" class="text-coral dark:text-coral link-underline text-sm font-medium ml-3">Delete</button>
+            </form>
+          </td>
+        </tr>
+        @empty
+        <tr>
+          <td colspan="5" class="px-5 py-10 text-center text-plum/50 dark:text-rose/50">No posts yet — create your first one.</td>
+        </tr>
+        @endforelse
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-6">
+    {{ $posts->links() }}
+  </div>
+</main>
+
+<script>
+function admin() {
+  return {
+    dark: false,
+    toggleTheme() {
+      this.dark = !this.dark;
+      document.cookie = `theme=${this.dark?'dark':'light'};path=/;max-age=31536000`;
+    },
+    init() {
+      const m = document.cookie.match(/theme=(dark|light)/);
+      this.dark = m ? m[1]==='dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+  }
+}
+</script>
+</body>
+</html>
+
+
+--------------- web
+
+<?php
+// routes/web.php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PostManagementController;
+use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\PostController as AdminPostController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\LikeController;
+use App\Http\Controllers\ReviewController;
+
+// ===================== GOOGLE AUTH ROUTES =====================
+Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
+Route::get('/auth/google/callback', [GoogleController::class, 'callback']);
+
+// ===================== PROFILE ROUTES =====================
+Route::middleware(['auth', 'author'])->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+});
+
+// ===================== HOME ROUTE =====================
+Route::get('/', [PostController::class, 'index'])->name('home');
+
+// ===================== DASHBOARD ROUTE =====================
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth'])->name('dashboard');
+
+// ===================== POST MANAGEMENT ROUTES =====================
+Route::middleware(['auth', 'author'])->group(function () {
+    Route::get('/posts/create', [PostManagementController::class, 'create'])->name('posts.create');
+    Route::post('/posts', [PostManagementController::class, 'store'])->name('posts.store');
+});
+Route::get('/posts/{id}/edit', [PostManagementController::class, 'edit'])->name('posts.edit');
+Route::put('/posts/{id}', [PostManagementController::class, 'update'])->name('posts.update');
+Route::delete('/posts/{id}', [PostManagementController::class, 'destroy'])->name('posts.destroy');
+
+// ===================== COMMENT ROUTES =====================
+// Public comment routes
+Route::get('/posts/{post}/comments', [CommentController::class, 'index'])->name('comments.index');
+Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
+
+// Authenticated comment routes
+Route::middleware(['auth'])->group(function () {
+    Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+});
+
+// ===================== LIKE ROUTES =====================
+Route::middleware(['auth'])->group(function () {
+    Route::post('/posts/{post}/like', [LikeController::class, 'toggle'])->name('posts.like');
+    Route::get('/posts/{post}/likes', [LikeController::class, 'getLikes'])->name('posts.likes');
+});
+
+// ===================== REVIEW ROUTES =====================
+// Public review routes
+Route::get('/posts/{post}/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+
+// Authenticated review routes
+Route::middleware(['auth'])->group(function () {
+    Route::post('/posts/{post}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::put('/reviews/{review}', [ReviewController::class, 'update'])->name('reviews.update');
+    Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
+});
+
+// ===================== ADMIN ROUTES =====================
+// Admin comment management routes
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/comments', [CommentController::class, 'adminIndex'])->name('comments.index');
+    Route::post('/comments/{comment}/toggle-approval', [CommentController::class, 'adminToggleApproval'])->name('comments.toggle-approval');
+});
+
+// Admin Panel Routes
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::resource('users', UserController::class)->except(['show']);
+    Route::resource('posts', AdminPostController::class)->except(['show']);
+});
+
+// ===================== POST READ-TIME TRACKING =====================
+Route::post('/posts/{id}/track-read', [PostController::class, 'trackRead'])->name('posts.track-read');
+
+// ===================== BREEZE AUTH ROUTES =====================
+// IMPORTANT: Include Breeze Auth Routes - THIS MUST BE THE LAST LINE
+require __DIR__.'/auth.php';
+
+// ===================== POST VIEW ROUTE =====================
+// Post view route (this should be LAST to not conflict with other routes)
+Route::get('/{slug}', [PostController::class, 'show'])->name('posts.show');
+
+-----------------PostManagementController
+
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Post;
+use App\Models\Category;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+
+class PostManagementController extends Controller
+{
+    public function create()
+    {
+        $categories = Category::orderBy('name')->get();
+        return view('posts.create', compact('categories'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'content' => 'required|string',
+            'status' => 'required|in:draft,published',
+            'featured_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'published_at' => 'nullable|date',
+        ]);
+
+        $slug = Str::slug($validated['title']);
+
+        if (Post::where('slug', $slug)->exists()) {
+            $slug = $slug . '-' . uniqid();
+        }
+
+        $imagePath = null;
+        if ($request->hasFile('featured_image')) {
+            $imagePath = $request->file('featured_image')->store('featured_images', 'public');
+        }
+
+        $post = Post::create([
+            'author_id' => auth()->id(),
+            'category_id' => $validated['category_id'],
+            'title' => $validated['title'],
+            'slug' => $slug,
+            'content' => $validated['content'],
+            'status' => $validated['status'],
+            'featured_image' => $imagePath,
+            'views' => 0,
+            'published_at' => $validated['status'] === 'published'
+                ? ($validated['published_at'] ?? Carbon::now())
+                : null,
+        ]);
+
+        Cache::forget('search-index');
+        Cache::tags(['blog'])->flush();
+
+        return redirect()->route('posts.show', $post->slug)
+            ->with('success', 'Post created successfully!');
+    }
+
+    public function edit($id)
+    {
+        $post = Post::findOrFail($id);
+        $categories = Category::orderBy('name')->get();
+
+        return view('posts.edit', compact('post', 'categories'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $post = Post::findOrFail($id);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'content' => 'required|string',
+            'status' => 'required|in:draft,published',
+            'featured_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'remove_featured_image' => 'nullable|boolean',
+            'published_at' => 'nullable|date',
+        ]);
+
+        $imagePath = $post->featured_image;
+
+        if ($request->hasFile('featured_image')) {
+            // New image uploaded — delete the old one, store the new one
+            if ($post->featured_image) {
+                Storage::disk('public')->delete($post->featured_image);
+            }
+            $imagePath = $request->file('featured_image')->store('featured_images', 'public');
+        } elseif ($request->boolean('remove_featured_image')) {
+            // User explicitly removed the image without replacing it
+            if ($post->featured_image) {
+                Storage::disk('public')->delete($post->featured_image);
+            }
+            $imagePath = null;
+        }
+        // else: no new file and no removal requested → keep existing $post->featured_image
+
+        $post->update([
+            'title' => $validated['title'],
+            'category_id' => $validated['category_id'],
+            'content' => $validated['content'],
+            'status' => $validated['status'],
+            'featured_image' => $imagePath,
+            'published_at' => $validated['status'] === 'published'
+                ? ($validated['published_at'] ?? Carbon::now())
+                : null,
+        ]);
+
+        Cache::forget('search-index');
+        Cache::tags(['blog'])->flush();
+
+        return redirect()->route('posts.show', $post->slug)
+            ->with('success', 'Post updated successfully!');
+    }
+
+    public function destroy($id)
+    {
+        $post = Post::findOrFail($id);
+
+        if ($post->featured_image) {
+            Storage::disk('public')->delete($post->featured_image);
+        }
+
+        $post->delete();
+
+        Cache::forget('search-index');
+        Cache::tags(['blog'])->flush();
+
+        return redirect()->route('home')
+            ->with('success', 'Post deleted successfully!');
+    }
+}

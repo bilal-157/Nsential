@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@php
+// =====================================================================
+// DYNAMIC, CATEGORY-AWARE SEO
+// Each category gets its own title suffix / fallback description /
+// keyword set / schema.org type, so posts across very different verticals
+// (AI, Finance, Health, Product Reviews, Local guides, etc.) each get
+// copy and structured data that actually matches the content type,
+// instead of one generic "Laravel/PHP" fallback for every post.
+// =====================================================================
+
+$postTitle   = $cached['title'] ?? $post->title;
+$postSlug    = $cached['slug'] ?? $post->slug;
+$categoryName = $cached['category']['name'] ?? optional($post->category ?? null)->name ?? null;
+$canonicalUrl = route('posts.show', $postSlug);
+
+$categorySeoMap = [
+    'Artificial Intelligence' => [
+        'suffix'   => 'AI Insights & Guides',
+        'desc'     => 'In-depth analysis, tutorials, and practical guidance on artificial intelligence, machine learning, and emerging AI tools.',
+        'keywords' => 'artificial intelligence, AI news, machine learning, AI tools, AI guide',
+    ],
+    'Finance & Online Earning' => [
+        'suffix'   => 'Finance & Online Earning',
+        'desc'     => 'Practical money management tips and proven, legitimate ways to earn income online.',
+        'keywords' => 'personal finance, online earning, make money online, side income, financial tips',
+    ],
+    'Health & Fitness' => [
+        'suffix'   => 'Health & Fitness Guide',
+        'desc'     => 'Evidence-informed health and fitness guidance to help you build sustainable habits.',
+        'keywords' => 'health tips, fitness guide, wellness, workout, healthy lifestyle',
+    ],
+    'Education & Career' => [
+        'suffix'   => 'Education & Career Advice',
+        'desc'     => 'Actionable education and career advice to help you plan your next academic or professional step.',
+        'keywords' => 'career advice, education guide, job skills, career growth, study tips',
+    ],
+    'Tech Reviews' => [
+        'suffix'   => 'Tech Review',
+        'desc'     => 'Hands-on, honest technology reviews to help you make smarter buying decisions.',
+        'keywords' => 'tech review, gadget review, product comparison, tech news',
+    ],
+    'Digital Marketing & SEO' => [
+        'suffix'   => 'Digital Marketing & SEO Tips',
+        'desc'     => 'Actionable digital marketing and SEO strategies to help you grow traffic, rankings, and conversions.',
+        'keywords' => 'digital marketing, SEO tips, content marketing, search engine optimization',
+    ],
+    'Product Review (Affiliate)' => [
+        'suffix'   => 'Honest Product Review',
+        'desc'     => 'An honest, detailed product review covering features, pros and cons, and value for money.',
+        'keywords' => 'product review, buying guide, best products, honest review',
+    ],
+    'Local Informational' => [
+        'suffix'   => 'Local Guide',
+        'desc'     => 'Local, region-specific information, guides, and recommendations.',
+        'keywords' => 'local guide, travel tips, city guide, local information',
+    ],
+];
+
+$catMeta = $categorySeoMap[$categoryName] ?? [
+    'suffix'   => 'Article',
+    'desc'     => null,
+    'keywords' => null,
+];
+
+// Title: keep it natural for short titles, but always end with a category
+// suffix + brand so every post has a distinct, descriptive <title>.
+$seoTitle = $postTitle . ' | ' . $catMeta['suffix'] . ' | NSential';
+
+// Description: prefer real content, fall back to category-specific copy
+// instead of one generic Laravel/PHP blurb for every vertical.
+$contentText = trim(strip_tags($cached['content'] ?? $post->content ?? ''));
+if (strlen($contentText) >= 50) {
+    $ogDescription = Str::limit($contentText, 160);
+} elseif ($catMeta['desc']) {
+    $ogDescription = 'Read "' . $postTitle . '" — ' . $catMeta['desc'];
+} else {
+    $ogDescription = 'Read "' . $postTitle . '" on NSential.';
+}
+$ogDescription = Str::limit($ogDescription, 160, '');
+
+$ogImage = isset($cached['featured_image']) && $cached['featured_image']
+    ? $cached['featured_image']
+    : asset('images/default-og-image.jpg');
+
+// Product reviews get og:type=product (and Product schema below);
+// everything else stays a standard article.
+$isProductReview = $categoryName === 'Product Review (Affiliate)';
+$ogType = $isProductReview ? 'product' : 'article';
+
+$postStatus = $cached['status'] ?? $post->status;
+$isPublished = $postStatus === 'published';
+
+$reviewsCount = (int) ($cached['reviews_count'] ?? 0);
+$averageRating = (float) ($cached['average_rating'] ?? 0);
+
+$publishedIso = (isset($cached['published_at_raw']) && $cached['published_at_raw'])
+    ? \Carbon\Carbon::parse($cached['published_at_raw'])->toIso8601String()
+    : null;
+$modifiedIso = isset($post->updated_at) ? \Carbon\Carbon::parse($post->updated_at)->toIso8601String() : $publishedIso;
+
+// ---- JSON-LD structured data ----
+$jsonLd = [
+    '@context' => 'https://schema.org',
+    '@graph' => [],
+];
+
+// Breadcrumbs
+$breadcrumbItems = [
+    ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => url('/')],
+];
+if ($categoryName) {
+    $breadcrumbItems[] = [
+        '@type' => 'ListItem',
+        'position' => 2,
+        'name' => $categoryName,
+        'item' => url('/categories/' . ($cached['category']['slug'] ?? Str::slug($categoryName))),
+    ];
+}
+$breadcrumbItems[] = [
+    '@type' => 'ListItem',
+    'position' => count($breadcrumbItems) + 1,
+    'name' => $postTitle,
+    'item' => $canonicalUrl,
+];
+$jsonLd['@graph'][] = [
+    '@type' => 'BreadcrumbList',
+    'itemListElement' => $breadcrumbItems,
+];
+
+// Core Article (or Product, for affiliate reviews) node
+$articleNode = [
+    '@type' => $isProductReview ? 'Product' : 'Article',
+    'name' => $postTitle,
+    'headline' => Str::limit($postTitle, 110, ''),
+    'description' => $ogDescription,
+    'image' => $ogImage,
+    'url' => $canonicalUrl,
+    'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonicalUrl],
+];
+
+if (!$isProductReview) {
+    $articleNode['@type'] = 'Article';
+    $articleNode['articleSection'] = $categoryName;
+    if ($publishedIso) $articleNode['datePublished'] = $publishedIso;
+    if ($modifiedIso) $articleNode['dateModified'] = $modifiedIso;
+    if (isset($cached['author']) && $cached['author']) {
+        $articleNode['author'] = [
+            '@type' => 'Person',
+            'name' => $cached['author']['name'],
+        ];
+    }
+    $articleNode['publisher'] = [
+        '@type' => 'Organization',
+        'name' => 'NSential',
+        'logo' => ['@type' => 'ImageObject', 'url' => asset('images/logo.png')],
+    ];
+}
+
+// Ratings/reviews apply to both content types when present, so posts with
+// user reviews (e.g. product reviews, tool comparisons) get eligible for
+// star-rating rich snippets in search results.
+if ($reviewsCount > 0 && $averageRating > 0) {
+    $articleNode['aggregateRating'] = [
+        '@type' => 'AggregateRating',
+        'ratingValue' => number_format($averageRating, 1),
+        'reviewCount' => $reviewsCount,
+        'bestRating' => 5,
+        'worstRating' => 1,
+    ];
+}
+
+if ($isProductReview) {
+    // Product schema requires an "offers" or "review" node to be fully
+    // valid for rich results; brand/offer details should be filled in
+    // from post/product meta once that data exists on the model.
+    if (isset($cached['author']) && $cached['author']) {
+        $articleNode['review'] = [
+            '@type' => 'Review',
+            'author' => ['@type' => 'Person', 'name' => $cached['author']['name']],
+            'reviewRating' => [
+                '@type' => 'Rating',
+                'ratingValue' => $averageRating > 0 ? number_format($averageRating, 1) : 5,
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ],
+        ];
+    }
+}
+
+$jsonLd['@graph'][] = $articleNode;
+@endphp
+
+    <title>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $ogDescription }}">
+    @if($catMeta['keywords'])
+    <meta name="keywords" content="{{ $catMeta['keywords'] }}">
+    @endif
+    <meta name="robots" content="{{ $isPublished ? 'index, follow, max-image-preview:large' : 'noindex, nofollow' }}">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="{{ $ogType }}">
+    <meta property="og:title" content="{{ $postTitle }}">
+    <meta property="og:description" content="{{ $ogDescription }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:site_name" content="NSential">
+    <meta property="og:locale" content="en_US">
+    @if($categoryName)
+    <meta property="article:section" content="{{ $categoryName }}">
+    <meta property="article:tag" content="{{ $categoryName }}">
+    @endif
+    @if($publishedIso)
+    <meta property="article:published_time" content="{{ $publishedIso }}">
+    @endif
+    @if($modifiedIso)
+    <meta property="article:modified_time" content="{{ $modifiedIso }}">
+    @endif
+    @if(isset($cached['author']) && $cached['author'])
+    <meta property="article:author" content="{{ $cached['author']['name'] }}">
+    @endif
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $postTitle }}">
+    <meta name="twitter:description" content="{{ $ogDescription }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
+    {{-- Add your real handle once available, e.g. <meta name="twitter:site" content="@NSential"> --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- Structured Data (JSON-LD): BreadcrumbList + Article/Product + AggregateRating -->
+    <script type="application/ld+json">{!! json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+
+    <!-- Font Awesome for star icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" defer></script>
+
+    <style>
+    /* ===== TOAST SYSTEM ===== */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 380px;
+    }
+    .toast {
+        background: #14152a;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 12px;
+        padding: 14px 20px;
+        color: #f5f3ff;
+        font-size: 14px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { border-left: 4px solid #34d399; }
+    .toast.error { border-left: 4px solid #f87171; }
+    .toast.warning { border-left: 4px solid #fbbf24; }
+
+    /* ===== CONFIRM MODAL ===== */
+    .confirm-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+    }
+    .confirm-modal.open { display: flex; }
+    .confirm-box {
+        background: #14152a;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+    }
+    .confirm-box h3 { color: #f5f3ff; margin-bottom: 8px; }
+    .confirm-box p { color: #94a3b8; margin-bottom: 20px; }
+    .confirm-box .actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .confirm-box .actions button {
+        padding: 8px 20px;
+        border-radius: 999px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .confirm-box .btn-cancel {
+        background: rgba(255,255,255,0.06);
+        color: #f5f3ff;
+    }
+    .confirm-box .btn-confirm {
+        background: #ef4444;
+        color: white;
+    }
+    .confirm-box .btn-confirm.success { background: #34d399; }
+
+    /* ===== TOUCH TARGET FIXES ===== */
+    button,
+    input[type="submit"],
+    input[type="button"],
+    a,
+    .nav-link,
+    .pill-btn,
+    .grad-btn,
+    .btn-primary,
+    .btn-secondary,
+    .share-btn-card,
+    .share-btn,
+    .filter-dropdown-btn,
+    .nav-toggle-btn,
+    #userMenuBtn,
+    .legal-modal-close,
+    .share-modal-close,
+    .filter-option,
+    .footer-social a,
+    .footer-col ul a,
+    .footer-bottom-links a,
+    .footer-logout-form button,
+    #userMenu a,
+    #userMenu button[type="submit"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    #userMenuBtn,
+    .nav-toggle-btn,
+    .footer-social a {
+        min-width: 48px;
+        min-height: 48px;
+    }
+
+    #postsSearchInput,
+    .share-url-input {
+        min-height: 48px;
+    }
+
+    /* ===== MOBILE FONT SIZE FIXES ===== */
+    @media (max-width: 767px) {
+        .section-label,
+        .count-badge,
+        .post-card .views,
+        .post-card .cat,
+        .review-time,
+        .review-post-title,
+        .glass-card .tag,
+        .rank-meta .rank-cat,
+        .rank-meta,
+        .legal-modal-updated,
+        .share-btn-card span,
+        .share-btn,
+        .share-tip {
+            font-size: 12px !important;
+        }
+    }
+</style>
+</head>
+
+<body class="bg-void min-h-screen">
+    @php
+        $isLikedByUser = $post->isLikedByUser();
+        $userReview = collect($cached['reviews'] ?? [])->first(fn($r) => Auth::check() && ($r['user_id'] ?? null) == Auth::id());
+    @endphp
+
+    <!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Confirm Modal -->
+<div class="confirm-modal" id="confirmModal">
+    <div class="confirm-box">
+        <h3 id="confirmTitle">Confirm</h3>
+        <p id="confirmMessage">Are you sure?</p>
+        <div class="actions">
+            <button class="btn-cancel" id="confirmCancel">Cancel</button>
+            <button class="btn-confirm" id="confirmOk">Confirm</button>
+        </div>
+    </div>
+</div>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Back to Posts Button - Top -->
+        <a href="/" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 bg-card border border-hairline text-mist hover:text-ivory hover:border-cyan/40 hover:shadow-lg hover:shadow-cyan/5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to all posts
+        </a>
+
+        <article class="bg-panel border border-hairline rounded-lg overflow-hidden mt-4">
+            <div class="p-6 sm:p-8">
+                <div class="flex items-center justify-between text-xs text-mist mb-4 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-card border border-hairline px-3 py-1 rounded-full">{{ $cached['status'] ?? $post->status }}</span>
+                        @if(isset($cached['category']) && $cached['category'])
+                        <span class="bg-violet/15 text-violet border border-violet/20 px-3 py-1 rounded-full">{{ $cached['category']['name'] }}</span>
+                        @endif
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span>{{ number_format($cached['views'] ?? $post->views) }} views</span>
+                    </div>
+                </div>
+
+                <h1 class="text-3xl md:text-4xl font-bold text-ivory mb-4">{{ $cached['title'] ?? $post->title }}</h1>
+
+                <div class="flex items-center gap-3 text-sm text-mist mb-6">
+                    <span>Published: {{ isset($cached['published_at']) ? \Carbon\Carbon::parse($cached['published_at_raw'])->format('F d, Y') : 'Not published' }}</span>
+                    <span>·</span>
+                    <span id="readingTimeDisplay">
+                        @php
+                            $readingTimeSeconds = $cached['reading_time'] ?? $post->reading_time ?? 0;
+                            $minutes = $readingTimeSeconds > 0 ? ceil($readingTimeSeconds / 60) : 0;
+                        @endphp
+                        {{ $minutes > 0 ? $minutes . ' min read' : 'Calculating...' }}
+                    </span>
+                </div>
+
+                @if(isset($cached['author']) && $cached['author'])
+                <div class="flex items-center gap-3 mb-6 p-4 bg-card border border-hairline rounded-lg">
+                    @if($cached['author']['avatar'] ?? false)
+                    <img src="{{ $cached['author']['avatar'] }}" alt="{{ $cached['author']['name'] }}" class="w-11 h-11 rounded-full object-cover">
+                    @else
+                    <div class="w-11 h-11 rounded-full bg-violet/15 flex items-center justify-center text-violet font-semibold">
+                        {{ strtoupper(substr($cached['author']['name'], 0, 1)) }}
+                    </div>
+                    @endif
+                    <div>
+                        <p class="font-semibold text-ivory text-sm">{{ $cached['author']['name'] }}</p>
+                        @if($cached['author']['bio'])
+                        <p class="text-xs text-mist">{{ $cached['author']['bio'] }}</p>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                <div class="prose max-w-none">
+                    <p class="text-mist leading-relaxed whitespace-pre-wrap">{{ $cached['content'] ?? $post->content }}</p>
+                </div>
+
+                @if(isset($cached['featured_image']) && $cached['featured_image'])
+                <div class="mt-6">
+                    <img src="{{ $cached['featured_image'] }}" alt="{{ $cached['title'] ?? $post->title }}" class="w-full rounded-lg border border-hairline">
+                </div>
+                @endif
+
+                {{-- ===================== ACTION BAR ===================== --}}
+                <div class="mt-8 pt-6 border-t border-hairline">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <button id="likeButton"
+                                class="flex items-center gap-2 px-4 py-2 rounded-full text-sm transition {{ $isLikedByUser ? 'bg-pink/10 text-pink border border-pink/30' : 'bg-card text-mist border border-hairline hover:border-cyan/40' }}"
+                                data-post-id="{{ $post->id }}">
+                            <svg id="likeIcon" class="w-4 h-4" fill="{{ $isLikedByUser ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                            </svg>
+                            <span id="likeCount">{{ $cached['likes_count'] ?? $post->likes_count }}</span>
+                            <span>Likes</span>
+                        </button>
+
+                        <button id="openCommentsBtn"
+                                class="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-hairline text-sm text-ivory hover:border-cyan/40 transition">
+                            <svg class="w-4 h-4 text-mist" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                            <span id="commentCount">{{ $cached['comments_count'] ?? $post->comments_count }}</span>
+                            <span>Comments</span>
+                        </button>
+
+                        <button id="openReviewsBtn"
+                                class="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-hairline text-sm text-ivory hover:border-violet/40 transition">
+                            <i class="fas fa-star text-amber-400 text-xs"></i>
+                            <span>{{ number_format((float) ($cached['average_rating'] ?? 0), 1) }}</span>
+                            <span class="text-mist">({{ (int) ($cached['reviews_count'] ?? 0) }} reviews)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        {{-- ===================== RELATED POSTS ===================== --}}
+        @php
+            // Use cached category ID or fallback to database
+            $categoryId = $cached['category']['id'] ?? $post->category_id ?? null;
+            $relatedPosts = collect();
+            if ($categoryId) {
+                $relatedPosts = App\Models\Post::where('category_id', $categoryId)
+                    ->where('id', '!=', $post->id)
+                    ->where('status', 'published')
+                    ->whereNotNull('published_at')
+                    ->orderBy('published_at', 'desc')
+                    ->limit(4)
+                    ->get();
+            }
+        @endphp
+
+        @if($relatedPosts->count() > 0)
+            <div class="mt-12">
+                <h2 class="text-xl font-bold text-ivory mb-5">
+                    Related Posts
+                    @if(isset($cached['category']) && $cached['category'])
+                        <span class="text-sm font-normal text-mist">in {{ $cached['category']['name'] }}</span>
+                    @endif
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    @foreach($relatedPosts as $relatedPost)
+                        <a href="{{ route('posts.show', $relatedPost->slug) }}" class="group bg-panel border border-hairline rounded-lg overflow-hidden hover:border-cyan/40 transition-colors duration-300">
+                            <div class="relative">
+                                @if($relatedPost->featured_image)
+                                    <img src="{{ asset('storage/' . $relatedPost->featured_image) }}"
+                                         alt="{{ $relatedPost->title }}"
+                                         class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">
+                                @else
+                                    <div class="w-full h-40 bg-card flex items-center justify-center">
+                                        <svg class="w-12 h-12 text-hairline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-semibold text-ivory text-sm group-hover:text-cyan transition-colors line-clamp-2">
+                                    {{ $relatedPost->title }}
+                                </h3>
+                                <div class="flex items-center gap-2 mt-2 text-xs text-mist">
+                                    <span>{{ $relatedPost->published_at ? $relatedPost->published_at->format('M d, Y') : 'No date' }}</span>
+                                    <span>·</span>
+                                    <span>{{ number_format($relatedPost->views) }} views</span>
+                                </div>
+                                @if($relatedPost->author)
+                                    <div class="mt-2 text-xs text-mist">
+                                        By {{ $relatedPost->author->name }}
+                                    </div>
+                                @endif
+                                <div class="mt-3 flex items-center gap-3 text-xs text-mist">
+                                    <span class="flex items-center gap-1">
+                                        <i class="far fa-comment"></i> {{ $relatedPost->comments_count }}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <i class="far fa-heart"></i> {{ $relatedPost->likes_count }}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <i class="far fa-star"></i> {{ number_format((float) $relatedPost->averageRating(), 1) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+    {{-- ===================== DRAWER OVERLAY ===================== --}}
+    <div id="drawerOverlay" class="hidden fixed inset-0 bg-black/60 z-40 transition-opacity"></div>
+
+    {{-- ===================== COMMENTS DRAWER ===================== --}}
+    <aside id="commentsDrawer" class="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-panel border-l border-hairline z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-hairline">
+            <h2 class="text-base font-bold text-ivory flex items-center gap-2">
+                Comments
+                <span id="commentCountDrawer" class="text-xs font-normal text-mist">{{ $cached['comments_count'] ?? $post->comments_count }}</span>
+            </h2>
+            <button id="closeCommentsBtn" class="text-mist hover:text-ivory transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-5 py-4">
+            @auth
+            {{-- New comment form --}}
+            <form id="commentForm" class="mb-4">
+                @csrf
+                <textarea
+                    id="commentContent"
+                    rows="2"
+                    placeholder="Write a comment..."
+                    class="w-full text-sm bg-card border border-hairline rounded-md p-2 text-ivory placeholder-mist/50 focus:outline-none focus:ring-2 focus:ring-cyan/40 focus:border-cyan resize-none"
+                    required
+                ></textarea>
+                <button
+                    type="submit"
+                    class="mt-2 w-full text-void text-sm font-semibold py-2 rounded-md transition-opacity hover:opacity-90"
+                    style="background: linear-gradient(90deg, #3FD8E0, #9C8CFF);"
+                >
+                    Post Comment
+                </button>
+            </form>
+            @else
+            <div class="mb-4 p-3 bg-card border border-hairline rounded-md text-sm text-mist">
+                <a href="{{ route('login') }}" class="text-cyan hover:text-violet">Login</a> to post a comment.
+            </div>
+            @endauth
+
+            {{-- Comments list — sourced from $cached['comments'], not a live query --}}
+            <div id="commentsList" class="space-y-3">
+                @php
+                    $topLevelComments = $cached['comments'] ?? [];
+                @endphp
+
+                @forelse ($topLevelComments as $comment)
+                    <div class="comment-item border-b border-hairline pb-3 last:border-0" data-comment-id="{{ $comment['id'] }}">
+                        <div class="flex items-start gap-2">
+                            <div class="flex-shrink-0">
+                                @if(!empty($comment['user']['avatar']))
+                                    <img src="{{ asset('storage/' . $comment['user']['avatar']) }}"
+                                         alt="{{ $comment['user']['name'] ?? 'Anonymous' }}"
+                                         class="w-6 h-6 rounded-full object-cover">
+                                @else
+                                    <div class="w-6 h-6 rounded-full bg-violet/15 flex items-center justify-center text-violet text-xs font-semibold">
+                                        {{ !empty($comment['user']['name']) ? strtoupper(substr($comment['user']['name'], 0, 1)) : 'A' }}
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="text-xs font-semibold text-ivory">
+                                        {{ $comment['user']['name'] ?? 'Anonymous' }}
+                                    </span>
+                                    <span class="text-[11px] text-mist">{{ \Carbon\Carbon::parse($comment['created_at'])->diffForHumans() }}</span>
+
+                                    @auth
+                                        @if(Auth::id() === ($comment['user_id'] ?? null))
+                                            <button class="edit-comment-btn text-[11px] text-cyan hover:text-violet ml-auto"
+                                                    data-comment-id="{{ $comment['id'] }}">
+                                                Edit
+                                            </button>
+                                            <button class="delete-comment-btn text-[11px] text-pink hover:opacity-80"
+                                                    data-comment-id="{{ $comment['id'] }}">
+                                                Delete
+                                            </button>
+                                        @endif
+                                    @endauth
+                                </div>
+
+                                <p class="text-xs text-mist leading-relaxed comment-content">{{ $comment['content'] }}</p>
+
+                                @auth
+                                <div class="mt-1">
+                                    <button class="reply-btn text-[11px] text-cyan hover:text-violet"
+                                            data-comment-id="{{ $comment['id'] }}">
+                                        Reply
+                                    </button>
+                                </div>
+
+                                <!-- Reply Form -->
+                                <div class="reply-form hidden mt-2" data-comment-id="{{ $comment['id'] }}">
+                                    <textarea rows="2"
+                                              placeholder="Write a reply..."
+                                              class="reply-textarea w-full text-xs bg-card border border-hairline rounded-md p-2 text-ivory placeholder-mist/50 focus:outline-none focus:ring-2 focus:ring-cyan/40 resize-none"></textarea>
+                                    <div class="mt-1 flex gap-2">
+                                        <button type="button" class="submit-reply-btn text-xs bg-card border border-hairline hover:border-cyan/40 text-ivory px-3 py-1 rounded transition">
+                                            Reply
+                                        </button>
+                                        <button type="button" class="cancel-reply-btn text-xs text-mist hover:text-ivory">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                                @endauth
+
+                                <!-- Replies -->
+                                @if(!empty($comment['replies']))
+                                    <div class="replies-container mt-2 space-y-2 pl-3 border-l border-hairline">
+                                        @foreach($comment['replies'] as $reply)
+                                            <div class="comment-item border-b border-hairline pb-2 last:border-0" data-comment-id="{{ $reply['id'] }}">
+                                                <div class="flex items-start gap-2">
+                                                    <div class="flex-shrink-0">
+                                                        @if(!empty($reply['user']['avatar']))
+                                                            <img src="{{ asset('storage/' . $reply['user']['avatar']) }}"
+                                                                 alt="{{ $reply['user']['name'] ?? 'Anonymous' }}"
+                                                                 class="w-6 h-6 rounded-full object-cover">
+                                                        @else
+                                                            <div class="w-6 h-6 rounded-full bg-violet/15 flex items-center justify-center text-violet text-xs font-semibold">
+                                                                {{ !empty($reply['user']['name']) ? strtoupper(substr($reply['user']['name'], 0, 1)) : 'A' }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                                            <span class="text-xs font-semibold text-ivory">
+                                                                {{ $reply['user']['name'] ?? 'Anonymous' }}
+                                                            </span>
+                                                            <span class="text-[11px] text-mist">{{ \Carbon\Carbon::parse($reply['created_at'])->diffForHumans() }}</span>
+
+                                                            @auth
+                                                                @if(Auth::id() === ($reply['user_id'] ?? null))
+                                                                    <button class="edit-comment-btn text-[11px] text-cyan hover:text-violet ml-auto"
+                                                                            data-comment-id="{{ $reply['id'] }}">
+                                                                        Edit
+                                                                    </button>
+                                                                    <button class="delete-comment-btn text-[11px] text-pink hover:opacity-80"
+                                                                            data-comment-id="{{ $reply['id'] }}">
+                                                                        Delete
+                                                                    </button>
+                                                                @endif
+                                                            @endauth
+                                                        </div>
+
+                                                        <p class="text-xs text-mist leading-relaxed comment-content">{{ $reply['content'] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="replies-container mt-2 space-y-2 pl-3 border-l border-hairline"></div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <p id="noComments" class="text-xs text-mist text-center py-6">No comments yet. Be the first!</p>
+                @endforelse
+            </div>
+        </div>
+    </aside>
+
+    {{-- ===================== REVIEWS DRAWER ===================== --}}
+    <aside id="reviewsDrawer" class="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-panel border-l border-hairline z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-hairline">
+            <h2 class="text-base font-bold text-ivory">Reviews</h2>
+            <button id="closeReviewsBtn" class="text-mist hover:text-ivory transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-5 py-4">
+
+            {{-- Compact Review Summary --}}
+            <div class="flex items-center gap-3 mb-3">
+                <span class="text-2xl font-bold text-ivory" id="averageRatingDisplay">
+                    {{ number_format((float) ($cached['average_rating'] ?? 0), 1) }}
+                </span>
+                <div>
+                    <div class="flex items-center gap-0.5 text-sm" id="starDisplay">
+                        @php
+                            $avgRating = (int) round((float) ($cached['average_rating'] ?? 0));
+                        @endphp
+                        @for($i = 1; $i <= 5; $i++)
+                            <i class="fas fa-star {{ $i <= $avgRating ? 'text-amber-400' : 'text-mist/30' }}"></i>
+                        @endfor
+                    </div>
+                    <div class="text-xs text-mist" id="totalReviewsDisplay">
+                        {{ (int) ($cached['reviews_count'] ?? 0) }} reviews
+                    </div>
+                </div>
+            </div>
+
+            {{-- Compact Rating Distribution --}}
+            <div class="mb-5 space-y-1">
+                @php
+                    $totalReviews = (int) ($cached['reviews_count'] ?? 0);
+                    $distribution = $cached['rating_distribution'] ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+                @endphp
+                @foreach($distribution as $stars => $count)
+                    <div class="flex items-center gap-2 text-[11px]">
+                        <span class="w-3 text-mist">{{ $stars }}</span>
+                        <i class="fas fa-star text-amber-400 text-[9px]"></i>
+                        <div class="flex-1 h-1.5 bg-card rounded-full overflow-hidden">
+                            <div class="dist-bar h-full bg-amber-400 rounded-full transition-all"
+                                 style="width: {{ $totalReviews > 0 ? ((int) $count / $totalReviews * 100) : 0 }}%"></div>
+                        </div>
+                        <span class="dist-count w-5 text-mist text-[11px] text-right">{{ (int) $count }}</span>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Review Form (collapsible) --}}
+            @auth
+                <button id="toggleReviewFormBtn" type="button"
+                        class="w-full mb-3 flex items-center justify-between px-3 py-2 rounded-md bg-card border border-hairline text-sm text-ivory hover:border-violet/40 transition">
+                    <span>{{ $userReview ? 'Edit your review' : 'Write a review' }}</span>
+                    <svg class="w-4 h-4 text-mist" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                <div id="reviewFormWrapper" class="hidden mb-4 p-3 bg-card border border-hairline rounded-lg">
+                    <form id="reviewForm">
+                        @csrf
+                        <div class="mb-2">
+                            <div class="flex gap-1 text-xl" id="starRating">
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="fas fa-star cursor-pointer transition hover:scale-110 {{ $userReview && $userReview['rating'] >= $i ? 'text-amber-400' : 'text-mist/30' }}"
+                                       data-rating="{{ $i }}"></i>
+                                @endfor
+                            </div>
+                            <input type="hidden" name="rating" id="ratingInput" value="{{ $userReview['rating'] ?? 5 }}">
+                        </div>
+                        <textarea
+                            name="review_text"
+                            id="reviewText"
+                            rows="2"
+                            placeholder="Share your thoughts (optional)..."
+                            class="w-full text-xs bg-panel border border-hairline rounded-md p-2 text-ivory placeholder-mist/50 focus:outline-none focus:ring-2 focus:ring-cyan/40 resize-none"
+                        >{{ $userReview['review_text'] ?? '' }}</textarea>
+                        <button
+                            type="submit"
+                            id="submitReviewBtn"
+                            class="w-full mt-2 text-void text-sm font-semibold py-2 rounded-md transition-opacity hover:opacity-90"
+                            style="background: linear-gradient(90deg, #3FD8E0, #9C8CFF);"
+                        >
+                            {{ $userReview ? 'Update Review' : 'Submit Review' }}
+                        </button>
+                        @if($userReview)
+                            <button
+                                type="button"
+                                id="deleteReviewBtn"
+                                data-review-id="{{ $userReview['id'] }}"
+                                class="w-full mt-2 bg-pink/10 border border-pink/30 hover:bg-pink/20 text-pink text-sm font-medium py-2 rounded-md transition"
+                            >
+                                Delete Review
+                            </button>
+                        @endif
+                    </form>
+                </div>
+            @else
+                <div class="mb-4 p-3 bg-card border border-hairline rounded-md text-sm text-mist">
+                    <a href="{{ route('login') }}" class="text-cyan hover:text-violet">Login</a> to write a review.
+                </div>
+            @endauth
+
+            {{-- Reviews List — sourced from $cached['reviews'], not a live query --}}
+            <div id="reviewsList" class="space-y-3">
+                @forelse(($cached['reviews'] ?? []) as $review)
+                    <div class="review-item border-b border-hairline pb-3 last:border-0" data-review-id="{{ $review['id'] }}">
+                        <div class="flex items-start gap-2">
+                            <div class="flex-shrink-0">
+                                @if(!empty($review['user']['avatar']))
+                                    <img src="{{ asset('storage/' . $review['user']['avatar']) }}"
+                                         alt="{{ $review['user']['name'] ?? 'User' }}"
+                                         class="w-6 h-6 rounded-full object-cover">
+                                @else
+                                    <div class="w-6 h-6 rounded-full bg-violet/15 flex items-center justify-center text-violet text-xs font-semibold">
+                                        {{ !empty($review['user']['name']) ? strtoupper(substr($review['user']['name'], 0, 1)) : 'U' }}
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-semibold text-ivory text-xs">{{ $review['user']['name'] ?? 'User' }}</span>
+                                    <div class="flex items-center gap-0.5 text-[11px]">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <i class="fas fa-star {{ $i <= $review['rating'] ? 'text-amber-400' : 'text-mist/30' }}"></i>
+                                        @endfor
+                                    </div>
+                                    <span class="text-[11px] text-mist">{{ \Carbon\Carbon::parse($review['created_at'])->diffForHumans() }}</span>
+                                    @auth
+                                        @if(Auth::id() === ($review['user_id'] ?? null))
+                                            <button class="delete-review-btn text-[11px] text-pink hover:opacity-80 ml-auto"
+                                                    data-review-id="{{ $review['id'] }}">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        @endif
+                                    @endauth
+                                </div>
+                                @if(!empty($review['review_text']))
+                                    <p class="text-xs text-mist mt-1">{{ $review['review_text'] }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <p id="noReviews" class="text-xs text-mist text-center py-6">No reviews yet. Be the first to review!</p>
+                @endforelse
+            </div>
+        </div>
+    </aside>
+
+<script>
+    // ===== TOAST FUNCTION =====
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // ===== CONFIRM FUNCTION =====
+    function customConfirm(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmMessage').textContent = message;
+            modal.classList.add('open');
+            
+            function cleanup() {
+                modal.classList.remove('open');
+                document.removeEventListener('keydown', onKeydown);
+            }
+            
+            function onKeydown(e) {
+                if (e.key === 'Escape') { cleanup(); resolve(false); }
+                if (e.key === 'Enter') { cleanup(); resolve(true); }
+            }
+            
+            document.getElementById('confirmOk').onclick = () => { cleanup(); resolve(true); };
+            document.getElementById('confirmCancel').onclick = () => { cleanup(); resolve(false); };
+            document.addEventListener('keydown', onKeydown);
+            setTimeout(() => document.getElementById('confirmOk').focus(), 100);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const commentForm = document.getElementById('commentForm');
+        const commentsList = document.getElementById('commentsList');
+        const commentCount = document.getElementById('commentCount');
+        const commentCountDrawer = document.getElementById('commentCountDrawer');
+        const postId = {{ $post->id }};
+        const likeButton = document.getElementById('likeButton');
+        const likeCount = document.getElementById('likeCount');
+        const likeIcon = document.getElementById('likeIcon');
+
+        // ========== DRAWER OPEN/CLOSE ==========
+        const commentsDrawer = document.getElementById('commentsDrawer');
+        const reviewsDrawer = document.getElementById('reviewsDrawer');
+        const drawerOverlay = document.getElementById('drawerOverlay');
+        const openCommentsBtn = document.getElementById('openCommentsBtn');
+        const openReviewsBtn = document.getElementById('openReviewsBtn');
+        const closeCommentsBtn = document.getElementById('closeCommentsBtn');
+        const closeReviewsBtn = document.getElementById('closeReviewsBtn');
+
+        function openDrawer(drawer) {
+            commentsDrawer.classList.add('translate-x-full');
+            reviewsDrawer.classList.add('translate-x-full');
+            drawer.classList.remove('translate-x-full');
+            drawerOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawers() {
+            commentsDrawer.classList.add('translate-x-full');
+            reviewsDrawer.classList.add('translate-x-full');
+            drawerOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        if (openCommentsBtn) openCommentsBtn.addEventListener('click', () => openDrawer(commentsDrawer));
+        if (openReviewsBtn) openReviewsBtn.addEventListener('click', () => openDrawer(reviewsDrawer));
+        if (closeCommentsBtn) closeCommentsBtn.addEventListener('click', closeDrawers);
+        if (closeReviewsBtn) closeReviewsBtn.addEventListener('click', closeDrawers);
+        if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawers);
+
+        // ========== TOGGLE REVIEW FORM ==========
+        const toggleReviewFormBtn = document.getElementById('toggleReviewFormBtn');
+        const reviewFormWrapper = document.getElementById('reviewFormWrapper');
+        if (toggleReviewFormBtn && reviewFormWrapper) {
+            toggleReviewFormBtn.addEventListener('click', function() {
+                reviewFormWrapper.classList.toggle('hidden');
+            });
+        }
+
+        // ========== HANDLE LIKE BUTTON ==========
+        if (likeButton) {
+            likeButton.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Check if user is logged in
+                @guest
+                    showToast('Please login to like this post.', 'warning');
+                    window.location.href = '{{ route("login") }}';
+                    return;
+                @endguest
+
+                const postId = this.dataset.postId;
+                const button = this;
+
+                button.style.opacity = '0.6';
+                button.style.pointerEvents = 'none';
+
+                fetch(`/posts/${postId}/like`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to toggle like');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    likeCount.textContent = data.likes_count;
+                    if (data.liked) {
+                        likeIcon.setAttribute('fill', 'currentColor');
+                        button.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm transition bg-pink/10 text-pink border border-pink/30';
+                    } else {
+                        likeIcon.setAttribute('fill', 'none');
+                        button.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm transition bg-card text-mist border border-hairline hover:border-cyan/40';
+                    }
+                    button.style.opacity = '1';
+                    button.style.pointerEvents = 'auto';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Failed to like/unlike the post. Please try again.', 'error');
+                    button.style.opacity = '1';
+                    button.style.pointerEvents = 'auto';
+                });
+            });
+        }
+
+        // ========== HANDLE REPLY BUTTON CLICK ==========
+        document.addEventListener('click', async function(e) {
+            // Check if clicked element is a reply button or has reply-btn class
+            const replyBtn = e.target.closest('.reply-btn');
+            if (replyBtn) {
+                e.preventDefault();
+                const commentElement = replyBtn.closest('.comment-item');
+                const replyForm = commentElement.querySelector('.reply-form');
+
+                if (replyForm) {
+                    document.querySelectorAll('.reply-form').forEach(form => {
+                        if (form !== replyForm) {
+                            form.classList.add('hidden');
+                            const textarea = form.querySelector('textarea');
+                            if (textarea) textarea.value = '';
+                        }
+                    });
+
+                    replyForm.classList.toggle('hidden');
+                    if (!replyForm.classList.contains('hidden')) {
+                        const textarea = replyForm.querySelector('textarea');
+                        if (textarea) {
+                            textarea.focus();
+                            textarea.value = '';
+                        }
+                    }
+                }
+                return;
+            }
+
+            // Cancel reply
+            const cancelBtn = e.target.closest('.cancel-reply-btn');
+            if (cancelBtn) {
+                const replyForm = cancelBtn.closest('.reply-form');
+                if (replyForm) {
+                    replyForm.classList.add('hidden');
+                    const textarea = replyForm.querySelector('textarea');
+                    if (textarea) textarea.value = '';
+                }
+                return;
+            }
+
+            // Submit reply - handle dynamically created submit buttons
+            const submitReplyBtn = e.target.closest('.submit-reply-btn');
+            if (submitReplyBtn) {
+                const replyForm = submitReplyBtn.closest('.reply-form');
+                if (replyForm) {
+                    handleReplySubmission(replyForm);
+                }
+                return;
+            }
+
+            // Delete comment
+            const deleteBtn = e.target.closest('.delete-comment-btn');
+            if (deleteBtn) {
+                const commentId = deleteBtn.dataset.commentId;
+                if (await customConfirm('Are you sure you want to delete this comment?')) {
+                    deleteComment(commentId, deleteBtn);
+                }
+                return;
+            }
+
+            // Edit comment
+            const editBtn = e.target.closest('.edit-comment-btn');
+            if (editBtn) {
+                const commentId = editBtn.dataset.commentId;
+                editComment(commentId, editBtn);
+                return;
+            }
+        });
+
+        // ========== HANDLE REPLY SUBMISSION ==========
+        function handleReplySubmission(replyForm) {
+            const replyText = replyForm.querySelector('.reply-textarea').value;
+            const commentId = replyForm.dataset.commentId;
+
+            if (!replyText || replyText.trim().length < 2) {
+                showToast('Please write a reply (minimum 2 characters).', 'warning');
+                return;
+            }
+
+            const submitBtn = replyForm.querySelector('.submit-reply-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Replying...';
+
+            fetch(`/posts/${postId}/comments`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: replyText,
+                    parent_comment_id: commentId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.errors?.content?.[0] || 'Failed to post reply'); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const commentItem = replyForm.closest('.comment-item');
+                const repliesContainer = commentItem.querySelector('.replies-container');
+
+                if (repliesContainer.children.length === 0) {
+                    repliesContainer.className = 'replies-container mt-2 space-y-2 pl-3 border-l border-hairline';
+                }
+
+                const replyHtml = createCommentHtml(data.comment, true);
+                repliesContainer.insertAdjacentHTML('beforeend', replyHtml);
+
+                replyForm.querySelector('.reply-textarea').value = '';
+                replyForm.classList.add('hidden');
+
+                const count = parseInt(commentCount.textContent) + 1;
+                commentCount.textContent = count;
+                if (commentCountDrawer) commentCountDrawer.textContent = count;
+
+                const successMsg = document.createElement('div');
+                successMsg.className = 'text-cyan text-[11px] mt-1';
+                successMsg.textContent = '✓ Reply posted!';
+                repliesContainer.appendChild(successMsg);
+                setTimeout(() => successMsg.remove(), 2000);
+            })
+            .catch(error => {
+                showToast(error.message || 'Failed to post reply. Please try again.', 'error');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            });
+        }
+
+        // ========== HANDLE MAIN COMMENT SUBMISSION ==========
+        if (commentForm) {
+            commentForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const content = document.getElementById('commentContent').value;
+
+                if (!content || content.trim().length < 2) {
+                    showToast('Please write a comment (minimum 2 characters).', 'warning');
+                    return;
+                }
+
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Posting...';
+
+                try {
+                    const response = await fetch(`/posts/${postId}/comments`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            content: content
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.errors?.content?.[0] || 'Failed to post comment');
+                    }
+
+                    const data = await response.json();
+
+                    const noComments = document.getElementById('noComments');
+                    if (noComments) {
+                        noComments.remove();
+                    }
+
+                    const newCommentHtml = createCommentHtml(data.comment);
+                    commentsList.insertAdjacentHTML('afterbegin', newCommentHtml);
+
+                    const count = parseInt(commentCount.textContent) + 1;
+                    commentCount.textContent = count;
+                    if (commentCountDrawer) commentCountDrawer.textContent = count;
+
+                    document.getElementById('commentContent').value = '';
+
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'text-cyan text-xs mt-2';
+                    successMsg.textContent = '✓ Comment posted successfully!';
+                    this.appendChild(successMsg);
+                    setTimeout(() => successMsg.remove(), 3000);
+
+                } catch (error) {
+                    showToast(error.message || 'Failed to post comment. Please try again.', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        }
+
+        // ========== CREATE COMMENT HTML ==========
+        function createCommentHtml(comment, isReply = false) {
+            const authorName = comment.user ? comment.user.name : 'Anonymous';
+            const avatar = comment.user && comment.user.avatar ?
+                `/storage/${comment.user.avatar}` :
+                `https://www.gravatar.com/avatar/${md5(authorName.toLowerCase())}?d=mp&s=40`;
+            const timeAgo = comment.created_at ? new Date(comment.created_at).toLocaleDateString() : 'Just now';
+            const isOwner = {{ Auth::check() ? 'true' : 'false' }} && comment.user && comment.user.id === {{ Auth::id() ?? 0 }};
+
+            return `
+                <div class="comment-item border-b border-hairline pb-3 last:border-0 ${isReply ? 'ml-3 mt-2' : ''}" data-comment-id="${comment.id}">
+                    <div class="flex items-start gap-2">
+                        <div class="flex-shrink-0">
+                            <img src="${avatar}" alt="${authorName}" class="w-6 h-6 rounded-full object-cover">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="text-xs font-semibold text-ivory">${escapeHtml(authorName)}</span>
+                                <span class="text-[11px] text-mist">${timeAgo}</span>
+                                ${isOwner ? `
+                                    <button class="edit-comment-btn text-[11px] text-cyan hover:text-violet ml-auto" data-comment-id="${comment.id}">Edit</button>
+                                    <button class="delete-comment-btn text-[11px] text-pink hover:opacity-80" data-comment-id="${comment.id}">Delete</button>
+                                ` : ''}
+                            </div>
+                            <p class="text-xs text-mist leading-relaxed comment-content">${escapeHtml(comment.content)}</p>
+                            <div class="mt-1">
+                                @auth
+                                    <button class="reply-btn text-[11px] text-cyan hover:text-violet" data-comment-id="${comment.id}">Reply</button>
+                                @endauth
+                            </div>
+                            <div class="reply-form hidden mt-2" data-comment-id="${comment.id}">
+                                <textarea rows="2" placeholder="Write a reply..." class="reply-textarea w-full text-xs bg-card border border-hairline rounded-md p-2 text-ivory placeholder-mist/50 focus:outline-none focus:ring-2 focus:ring-cyan/40 resize-none"></textarea>
+                                <div class="mt-1 flex gap-2">
+                                    <button type="button" class="submit-reply-btn text-xs bg-card border border-hairline hover:border-cyan/40 text-ivory px-3 py-1 rounded transition">Reply</button>
+                                    <button type="button" class="cancel-reply-btn text-xs text-mist hover:text-ivory">Cancel</button>
+                                </div>
+                            </div>
+                            <div class="replies-container mt-2 space-y-2 pl-3 border-l border-hairline"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========== DELETE COMMENT ==========
+        function deleteComment(commentId, button) {
+            fetch(`/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete comment');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const commentItem = button.closest('.comment-item');
+                const commentCountValue = parseInt(commentCount.textContent);
+                const replyItems = commentItem.querySelectorAll('.comment-item');
+                const totalToSubtract = 1 + replyItems.length;
+                const newCount = commentCountValue - totalToSubtract;
+                commentCount.textContent = newCount;
+                if (commentCountDrawer) commentCountDrawer.textContent = newCount;
+                commentItem.remove();
+
+                if (commentsList.children.length === 0) {
+                    commentsList.innerHTML = `
+                        <p id="noComments" class="text-xs text-mist text-center py-6">No comments yet. Be the first!</p>
+                    `;
+                }
+
+                showToast('Comment deleted successfully!', 'success');
+            })
+            .catch(error => {
+                showToast(error.message || 'Failed to delete comment.', 'error');
+            });
+        }
+
+        // ========== EDIT COMMENT ==========
+        function editComment(commentId, button) {
+            const commentItem = button.closest('.comment-item');
+            const contentElement = commentItem.querySelector('.comment-content');
+            const currentContent = contentElement.textContent;
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'w-full text-xs bg-card border border-hairline rounded-md p-2 text-ivory focus:outline-none focus:ring-2 focus:ring-cyan/40 resize-none';
+            textarea.rows = 3;
+            textarea.value = currentContent;
+
+            contentElement.replaceWith(textarea);
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'mt-2 flex gap-2';
+            actionsDiv.innerHTML = `
+                <button class="save-edit-btn text-xs text-void px-3 py-1 rounded transition" style="background: linear-gradient(90deg, #3FD8E0, #9C8CFF);">Save</button>
+                <button class="cancel-edit-btn text-xs text-mist hover:text-ivory">Cancel</button>
+            `;
+
+            const replyBtn = commentItem.querySelector('.reply-btn');
+            if (replyBtn) {
+                replyBtn.closest('.mt-1').after(actionsDiv);
+            }
+
+            const editDeleteBtns = commentItem.querySelectorAll('.edit-comment-btn, .delete-comment-btn');
+            editDeleteBtns.forEach(btn => btn.style.display = 'none');
+
+            actionsDiv.querySelector('.save-edit-btn').addEventListener('click', function() {
+                const newContent = textarea.value.trim();
+                if (newContent.length < 2) {
+                    showToast('Comment must be at least 2 characters.', 'warning');
+                    return;
+                }
+
+                fetch(`/comments/${commentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content: newContent })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to update comment');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const newContentElement = document.createElement('p');
+                    newContentElement.className = 'text-xs text-mist leading-relaxed comment-content';
+                    newContentElement.textContent = data.comment.content;
+                    textarea.replaceWith(newContentElement);
+                    actionsDiv.remove();
+                    editDeleteBtns.forEach(btn => btn.style.display = 'inline-block');
+                    showToast('Comment updated successfully!', 'success');
+                })
+                .catch(error => {
+                    showToast(error.message || 'Failed to update comment.', 'error');
+                });
+            });
+
+            actionsDiv.querySelector('.cancel-edit-btn').addEventListener('click', function() {
+                const newContentElement = document.createElement('p');
+                newContentElement.className = 'text-xs text-mist leading-relaxed comment-content';
+                newContentElement.textContent = currentContent;
+                textarea.replaceWith(newContentElement);
+                actionsDiv.remove();
+                editDeleteBtns.forEach(btn => btn.style.display = 'inline-block');
+            });
+        }
+
+        // ========== REVIEW SECTION JAVASCRIPT ==========
+
+        const starElements = document.querySelectorAll('#starRating .fa-star');
+        const ratingInput = document.getElementById('ratingInput');
+
+        if (starElements.length > 0) {
+            starElements.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    ratingInput.value = rating;
+
+                    starElements.forEach((s, index) => {
+                        if (index < rating) {
+                            s.classList.remove('text-mist/30');
+                            s.classList.add('text-amber-400');
+                        } else {
+                            s.classList.remove('text-amber-400');
+                            s.classList.add('text-mist/30');
+                        }
+                    });
+                });
+
+                star.addEventListener('mouseenter', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    starElements.forEach((s, index) => {
+                        if (index < rating) {
+                            s.classList.remove('text-mist/30');
+                            s.classList.add('text-amber-200');
+                        } else {
+                            s.classList.remove('text-amber-200');
+                            s.classList.add('text-mist/30');
+                        }
+                    });
+                });
+
+                star.addEventListener('mouseleave', function() {
+                    const currentRating = parseInt(ratingInput.value);
+                    starElements.forEach((s, index) => {
+                        if (index < currentRating) {
+                            s.classList.remove('text-amber-200');
+                            s.classList.add('text-amber-400');
+                        } else {
+                            s.classList.remove('text-amber-200');
+                            s.classList.remove('text-amber-400');
+                            s.classList.add('text-mist/30');
+                        }
+                    });
+                });
+            });
+        }
+
+        const reviewForm = document.getElementById('reviewForm');
+        if (reviewForm) {
+            reviewForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const rating = ratingInput.value;
+                const reviewText = document.getElementById('reviewText').value;
+
+                if (!rating) {
+                    showToast('Please select a rating.', 'warning');
+                    return;
+                }
+
+                const submitBtn = document.getElementById('submitReviewBtn');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+
+                try {
+                    const response = await fetch(`/posts/{{ $post->id }}/reviews`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            rating: rating,
+                            review_text: reviewText
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.errors?.rating?.[0] || 'Failed to submit review');
+                    }
+
+                    const data = await response.json();
+
+                    updateReviewDisplay(data);
+
+                    const noReviews = document.getElementById('noReviews');
+                    if (noReviews) {
+                        noReviews.remove();
+                    }
+
+                    const reviewsList = document.getElementById('reviewsList');
+                    const existingReview = reviewsList.querySelector(`[data-review-id="${data.review.id}"]`);
+
+                    if (existingReview) {
+                        const reviewHtml = createReviewHtml(data.review);
+                        existingReview.outerHTML = reviewHtml;
+                    } else {
+                        const reviewHtml = createReviewHtml(data.review);
+                        reviewsList.insertAdjacentHTML('afterbegin', reviewHtml);
+                    }
+
+                    showToast(data.message, 'success');
+
+                    submitBtn.textContent = 'Update Review';
+                    if (toggleReviewFormBtn) toggleReviewFormBtn.querySelector('span').textContent = 'Edit your review';
+
+                    if (!document.getElementById('deleteReviewBtn')) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
+                        deleteBtn.id = 'deleteReviewBtn';
+                        deleteBtn.className = 'w-full mt-2 bg-pink/10 border border-pink/30 hover:bg-pink/20 text-pink text-sm font-medium py-2 rounded-md transition';
+                        deleteBtn.textContent = 'Delete Review';
+                        deleteBtn.dataset.reviewId = data.review.id;
+                        reviewForm.appendChild(deleteBtn);
+
+                        deleteBtn.addEventListener('click', function() {
+                            deleteReview(data.review.id);
+                        });
+                    } else {
+                        document.getElementById('deleteReviewBtn').dataset.reviewId = data.review.id;
+                    }
+
+                } catch (error) {
+                    showToast(error.message || 'Failed to submit review. Please try again.', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        }
+
+        const deleteReviewBtn = document.getElementById('deleteReviewBtn');
+        if (deleteReviewBtn) {
+            deleteReviewBtn.addEventListener('click', function() {
+                const reviewId = this.dataset.reviewId;
+                deleteReview(reviewId);
+            });
+        }
+
+        async function deleteReview(reviewId) {
+            if (!await customConfirm('Are you sure you want to delete your review?')) {
+                return;
+            }
+
+            fetch(`/reviews/${reviewId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete review');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const reviewItem = document.querySelector(`[data-review-id="${reviewId}"]`);
+                if (reviewItem) {
+                    reviewItem.remove();
+                }
+
+                updateReviewDisplay(data);
+
+                document.getElementById('reviewText').value = '';
+                ratingInput.value = 5;
+                starElements.forEach((s, index) => {
+                    if (index < 5) {
+                        s.classList.add('text-amber-400');
+                        s.classList.remove('text-mist/30');
+                    }
+                });
+
+                const submitBtn = document.getElementById('submitReviewBtn');
+                submitBtn.textContent = 'Submit Review';
+                if (toggleReviewFormBtn) toggleReviewFormBtn.querySelector('span').textContent = 'Write a review';
+
+                const deleteBtn = document.getElementById('deleteReviewBtn');
+                if (deleteBtn) {
+                    deleteBtn.remove();
+                }
+
+                showToast('Review deleted successfully!', 'success');
+
+                const reviewsList = document.getElementById('reviewsList');
+                if (reviewsList.children.length === 0) {
+                    reviewsList.innerHTML = `
+                        <p id="noReviews" class="text-xs text-mist text-center py-6">No reviews yet. Be the first to review!</p>
+                    `;
+                }
+            })
+            .catch(error => {
+                showToast(error.message || 'Failed to delete review.', 'error');
+            });
+        }
+
+        function createReviewHtml(review) {
+            const avatar = review.user.avatar ?
+                `/storage/${review.user.avatar}` :
+                '';
+
+            const initial = review.user.name ? review.user.name.charAt(0).toUpperCase() : 'U';
+
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                starsHtml += `<i class="fas fa-star ${i <= review.rating ? 'text-amber-400' : 'text-mist/30'}"></i>`;
+            }
+
+            const isOwner = {{ Auth::check() ? 'true' : 'false' }} && review.user.id === {{ Auth::id() ?? 0 }};
+
+            return `
+                <div class="review-item border-b border-hairline pb-3 last:border-0" data-review-id="${review.id}">
+                    <div class="flex items-start gap-2">
+                        <div class="flex-shrink-0">
+                            ${avatar ?
+                                `<img src="${avatar}" alt="${review.user.name}" class="w-6 h-6 rounded-full object-cover">` :
+                                `<div class="w-6 h-6 rounded-full bg-violet/15 flex items-center justify-center text-violet text-xs font-semibold">${initial}</div>`
+                            }
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-semibold text-ivory text-xs">${escapeHtml(review.user.name)}</span>
+                                <div class="flex items-center gap-0.5 text-[11px]">${starsHtml}</div>
+                                <span class="text-[11px] text-mist">${review.created_at || 'Just now'}</span>
+                                ${isOwner ? `
+                                    <button class="delete-review-btn text-[11px] text-pink hover:opacity-80 ml-auto"
+                                            data-review-id="${review.id}">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                ` : ''}
+                            </div>
+                            ${review.review_text ? `<p class="text-xs text-mist mt-1">${escapeHtml(review.review_text)}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateReviewDisplay(data) {
+            const avgDisplay = document.getElementById('averageRatingDisplay');
+            if (avgDisplay) {
+                const avgRating = parseFloat(data.average_rating) || 0;
+                avgDisplay.textContent = avgRating.toFixed(1);
+            }
+
+            const totalDisplay = document.getElementById('totalReviewsDisplay');
+            if (totalDisplay) {
+                totalDisplay.textContent = (data.total_reviews || 0) + ' reviews';
+            }
+
+            const openReviewsBtnSpans = openReviewsBtn ? openReviewsBtn.querySelectorAll('span') : [];
+            if (openReviewsBtnSpans.length >= 2) {
+                const avgRating = parseFloat(data.average_rating) || 0;
+                openReviewsBtnSpans[0].textContent = avgRating.toFixed(1);
+                openReviewsBtnSpans[1].textContent = `(${data.total_reviews || 0} reviews)`;
+            }
+
+            const starDisplay = document.getElementById('starDisplay');
+            if (starDisplay) {
+                const avg = Math.round(parseFloat(data.average_rating) || 0);
+                starDisplay.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const star = document.createElement('i');
+                    star.className = `fas fa-star ${i <= avg ? 'text-amber-400' : 'text-mist/30'}`;
+                    starDisplay.appendChild(star);
+                }
+            }
+
+            const distribution = data.rating_distribution || {};
+            const total = parseInt(data.total_reviews) || 0;
+            const bars = document.querySelectorAll('.dist-bar');
+            const counts = document.querySelectorAll('.dist-count');
+
+            let index = 0;
+            for (let i = 5; i >= 1; i--) {
+                const count = parseInt(distribution[i]) || 0;
+                const percentage = total > 0 ? (count / total * 100) : 0;
+                if (bars[index]) {
+                    bars[index].style.width = percentage + '%';
+                }
+                if (counts[index]) {
+                    counts[index].textContent = count;
+                }
+                index++;
+            }
+        }
+
+        // ========== UTILITY FUNCTIONS ==========
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function md5(string) {
+            return CryptoJS.MD5(string).toString();
+        }
+    });
+// ========== READING TIME TRACKING ==========
+    (function() {
+        const postId = {{ $post->id }};
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) return;
+
+        let lastActiveCheck = Date.now();
+        let accumulatedSeconds = 0;
+        let isPageVisible = !document.hidden;
+        const FLUSH_INTERVAL_MS = 60000;
+
+        function tick() {
+            if (isPageVisible) {
+                const now = Date.now();
+                accumulatedSeconds += Math.floor((now - lastActiveCheck) / 1000);
+                lastActiveCheck = now;
+            }
+        }
+
+        function flush(useBeacon = false) {
+            tick();
+            if (accumulatedSeconds < 1) return;
+
+            const duration = accumulatedSeconds;
+            accumulatedSeconds = 0;
+
+            if (useBeacon && navigator.sendBeacon) {
+                const formData = new FormData();
+                formData.append('duration', duration);
+                navigator.sendBeacon(`/posts/${postId}/track-read`, formData);
+                return;
+            }
+
+            fetch(`/posts/${postId}/track-read`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ duration }),
+                keepalive: true,
+            }).then(r => r.json()).then(data => {
+                if (data.success) updateDisplay(data.new_value);
+            }).catch(() => {});
+        }
+
+        function updateDisplay(seconds) {
+            const display = document.getElementById('readingTimeDisplay');
+            if (display && seconds) {
+                display.textContent = `${Math.ceil(seconds / 60)} min read`;
+            }
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            tick();
+            isPageVisible = !document.hidden;
+            lastActiveCheck = Date.now();
+        });
+
+        setInterval(() => flush(false), FLUSH_INTERVAL_MS);
+        window.addEventListener('pagehide', () => flush(true));
+    })();
+</script>
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+</body>
+</html>

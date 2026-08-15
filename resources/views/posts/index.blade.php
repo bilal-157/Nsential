@@ -1,193 +1,2159 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blog Posts</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50">
 
-    <!-- Navbar -->
-    <nav id="navbar" class="bg-white shadow-md fixed top-0 left-0 right-0 z-50 transition-transform duration-300">
+    <title>NSential | Latest Blog Posts</title>
+
+     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>🖊️</text></svg>">
+    
+    <meta
+        name="description"
+        content="Explore the latest articles on Laravel, PHP, Web Development, JavaScript, SEO, and modern software engineering."
+    >
+
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="NSential | Latest Blog Posts">
+    <meta property="og:description"
+          content="Explore the latest articles on Laravel, PHP, Web Development, JavaScript, SEO, and modern software engineering.">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="NSential">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Font Awesome for star icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- GSAP + ScrollTrigger (used by the hero section) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+    <!-- Fonts used site-wide -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============================================================
+           DESIGN TOKENS — shared across the whole page
+           ============================================================ */
+        :root{
+            --ink:#050611;
+            --panel:#0b0c1a;
+            --violet:#7c3aed;
+            --blue:#2f6fed;
+            --cyan:#22d3ee;
+            --paper:#f5f3ff;
+            --mist:#94a3b8;
+            --line: rgba(255,255,255,.10);
+        }
+
+        *{margin:0;padding:0;box-sizing:border-box}
+
+        html{
+            scroll-behavior:smooth;
+            scroll-padding-top:5.5rem; /* keeps anchor jumps clear of the fixed navbar */
+        }
+
+        body{
+            background: var(--ink);
+            color: var(--paper);
+            font-family:'Inter',-apple-system,sans-serif;
+            line-height:1.5;
+            -webkit-font-smoothing:antialiased;
+            text-rendering:optimizeLegibility;
+            overflow-x:hidden; /* the ambient book field can occasionally overshoot at extreme viewport widths */
+        }
+        h1,h2,h3,h4{ font-family:'Space Grotesk',sans-serif; letter-spacing:-.01em; }
+
+        /* Consistent focus ring across every interactive element instead of
+           the browser default, which reads inconsistently against the dark glass surfaces */
+        a:focus-visible, button:focus-visible, input:focus-visible{
+            outline: 2px solid var(--cyan);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            html{ scroll-behavior:auto; }
+        }
+
+        /* Ambient page backdrop — a quieter continuation of the hero glow */
+        body{
+            background-image:
+                radial-gradient(50% 35% at 85% 0%, rgba(124,58,237,.12), transparent 70%),
+                radial-gradient(45% 30% at 10% 40%, rgba(34,211,238,.08), transparent 70%);
+            background-repeat:no-repeat;
+        }
+
+        .fixed{position:fixed}
+        .top-0{top:0} .left-0{left:0} .right-0{right:0} .z-50{z-index:50}
+        .hidden{display:none}
+        .flex{display:flex} .items-center{align-items:center} .justify-between{justify-content:space-between}
+        .h-16{height:4rem}
+        .max-w-6xl{max-width:72rem}
+        .mx-auto{margin-left:auto;margin-right:auto}
+        .px-4{padding-left:1rem;padding-right:1rem}
+        .rounded-lg{border-radius:0.75rem}
+        .transition-colors{transition-property:color,background-color,border-color;transition-duration:0.15s}
+        .gap-1{gap:0.25rem}
+        .text-xs{font-size:0.75rem}
+        .line-clamp-3{
+            display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+        }
+        .line-clamp-2{
+            display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+        }
+
+        /* ---------- Glass surfaces used across navbar / cards / panels ---------- */
+        .glass{
+            background: linear-gradient(155deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+            border: 1px solid var(--line);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+        }
+        .grad-text{
+            background: linear-gradient(100deg, #a78bfa, #60a5fa 55%, #22d3ee);
+            -webkit-background-clip:text; background-clip:text; color:transparent;
+        }
+        .grad-btn{
+            font-weight:600; color:#0a0a12;
+            background:linear-gradient(100deg,#e9d5ff,#a5f3fc);
+            box-shadow: 0 8px 30px rgba(124,58,237,.35);
+            transition: transform .25s ease, box-shadow .25s ease;
+        }
+        .grad-btn:hover{ transform:translateY(-2px); box-shadow:0 12px 36px rgba(124,58,237,.5); }
+
+        /* ================= HERO SECTION ("The Reading Shelf") ================= */
+        .hero-shelf{
+            position:relative; overflow:hidden;
+            background:
+                radial-gradient(60% 50% at 15% 10%, rgba(124,58,237,.35), transparent 70%),
+                radial-gradient(50% 45% at 85% 15%, rgba(34,211,238,.22), transparent 70%),
+                radial-gradient(70% 60% at 50% 100%, rgba(47,111,237,.28), transparent 70%),
+                var(--ink);
+            min-height: 92vh;
+            isolation:isolate;
+            z-index:1;
+        }
+        .hero-shelf .hero-grain{
+            position:absolute; inset:0; pointer-events:none; z-index:1;
+            background-image: radial-gradient(rgba(255,255,255,.045) 1px, transparent 1px);
+            background-size: 3px 3px;
+            opacity:.5;
+        }
+        .hero-shelf .hero-inner{
+            position:relative; z-index:3;
+            max-width:72rem; margin:0 auto; padding: 5.5rem 1.5rem 6rem;
+            display:grid; grid-template-columns:1fr; gap:3rem;
+            min-height:92vh; align-items:center;
+        }
+        @media(min-width:1024px){
+            .hero-shelf .hero-inner{ grid-template-columns: 1.05fr .95fr; gap:2.5rem; }
+        }
+
+        .hero-heading{
+            font-weight:700; line-height:1.04; letter-spacing:-.02em;
+            font-size: clamp(2.4rem, 5.2vw, 4rem);
+            color: var(--paper);
+            margin: 1rem 0 1.25rem;
+        }
+        .hero-sub{
+            font-size: clamp(1rem, 1.4vw, 1.125rem);
+            line-height:1.7; color: var(--mist);
+            max-width: 34rem; margin-bottom: 2.25rem;
+        }
+        .hero-ctas{ display:flex; flex-wrap:wrap; gap:.9rem; margin-bottom: 2.5rem; }
+        .btn-primary{
+            font-weight:600; font-size:.95rem;
+            color:#0a0a12; background:linear-gradient(100deg,#e9d5ff,#a5f3fc);
+            padding:.9rem 1.7rem; border-radius:999px;
+            box-shadow: 0 8px 30px rgba(124,58,237,.35);
+            display:inline-flex; align-items:center; gap:.5rem;
+            text-decoration:none;
+            transition: transform .25s ease, box-shadow .25s ease;
+        }
+        .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 12px 36px rgba(124,58,237,.5); }
+        .btn-secondary{
+            font-weight:600; font-size:.95rem;
+            color: var(--paper);
+            padding:.9rem 1.6rem; border-radius:999px;
+            border:1px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(6px);
+            text-decoration:none;
+            transition: border-color .25s ease, background .25s ease, transform .25s ease;
+        }
+        .btn-secondary:hover{ border-color:rgba(255,255,255,.4); background:rgba(255,255,255,.08); transform:translateY(-2px); }
+        .hero-stats{ display:flex; gap:2.2rem; }
+        .hero-stats div b{ display:block; font-family:'Space Grotesk',sans-serif; font-size:1.4rem; color:var(--paper); }
+        .hero-stats div span{ font-size:.78rem; color:var(--mist); }
+
+        .hero-scene{ position:relative; height: 30rem; perspective: 1400px; }
+        @media(min-width:1024px){ .hero-scene{ height: 34rem; } }
+
+        /* ---------- Dev scene: laptop + code + magnifying glass, with small
+           icon badges floating around it ---------- */
+        .dev-scene{ position:relative; width:100%; height:100%; }
+        .dev-laptop-svg{
+            position:absolute; top:50%; left:50%;
+            width: 88%; max-width: 26rem;
+            transform: translate(-50%,-50%);
+            filter: drop-shadow(0 35px 60px rgba(3,4,20,.55));
+            z-index:3;
+        }
+        .dev-float{
+            position:absolute; top:var(--y); left:var(--x);
+            width:2.75rem; height:2.75rem; border-radius:.85rem;
+            display:flex; align-items:center; justify-content:center;
+            background: linear-gradient(155deg, rgba(255,255,255,.1), rgba(255,255,255,.02));
+            border:1px solid rgba(255,255,255,.16);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 16px 32px rgba(3,4,20,.4);
+            font-size:1.05rem;
+            z-index:5;
+            animation: devFloat var(--dur) ease-in-out infinite;
+            animation-delay: var(--delay);
+        }
+        @keyframes devFloat{
+            0%, 100%{ transform: translateY(0) rotate(0deg); }
+            50%{ transform: translateY(-16px) rotate(5deg); }
+        }
+        .dev-float--check{ color:#34d399; }
+        .dev-float--gear{ color:#c4b5fd; }
+        .dev-float--chat{ color:#67e8f9; }
+        .dev-float--code{ color:#fbbf24; }
+        .dev-float--binary{
+            flex-direction:column; gap:2px;
+            background:transparent; border:none; box-shadow:none; backdrop-filter:none;
+            font-family:'JetBrains Mono',monospace; font-size:.62rem; letter-spacing:.05em;
+            color: rgba(255,255,255,.32); width:auto; height:auto;
+        }
+        @media(max-width:640px){
+            .dev-float{ width:2.1rem; height:2.1rem; font-size:.85rem; }
+        }
+
+        /* ---------- Page-wide floating book field ----------
+           A single fixed layer, sized to the viewport, that sits behind
+           every section (hero, archive, panels). Ambient motion keeps
+           running as the page scrolls instead of stopping at the hero. */
+        .book-field-global{
+            position:fixed; inset:0; z-index:0;
+            perspective:1400px; transform-style:preserve-3d;
+            overflow:hidden; pointer-events:none;
+        }
+        .book{ position:absolute; transform-style:preserve-3d; will-change: transform; filter: blur(0px); }
+        .book-cover{
+            position:relative; width:100%; height:100%;
+            border-radius: 5px 10px 10px 5px;
+            box-shadow:
+                inset 6px 0 0 rgba(0,0,0,.28),
+                inset -1px 0 0 rgba(255,255,255,.06),
+                0 25px 45px rgba(3,4,16,.55);
+        }
+        .book-cover::after{
+            content:''; position:absolute; top:3%; right:-4px; bottom:3%; width:5px;
+            background: repeating-linear-gradient(180deg, #eef0f6 0 2px, #d7dae6 2px 4px);
+            border-radius: 0 3px 3px 0;
+        }
+        .book-cover .title-line{
+            position:absolute; left:16%; top:22%; right:12%;
+            height:2px; background:rgba(255,255,255,.55); border-radius:2px;
+        }
+        .book-cover .title-line.s{ top:29%; width:55%; background:rgba(255,255,255,.3); }
+
+        .glass-card{
+            position:relative; z-index:5;
+            margin-left:auto; margin-right:auto;
+            max-width: 22rem;
+            background: linear-gradient(155deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+            border:1px solid rgba(255,255,255,.14);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            border-radius: 1.25rem;
+            padding: 1.4rem 1.5rem 1.6rem;
+            box-shadow: 0 30px 60px rgba(3,4,20,.55), inset 0 1px 0 rgba(255,255,255,.12);
+        }
+        .glass-card .cover-img{
+            width:100%;
+            aspect-ratio: 16/9;
+            border-radius: .85rem;
+            overflow:hidden;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #7c3aed, #22d3ee);
+        }
+        .glass-card .cover-img img{
+            width:100%; height:100%; object-fit:cover; display:block;
+        }
+        .glass-card .tag{
+            font-family:'JetBrains Mono',monospace; font-size:.75rem; letter-spacing:.14em;
+            text-transform:uppercase; color:var(--cyan);
+            display:inline-block; margin-bottom:.6rem;
+        }
+        .glass-card h3{
+            font-weight:600; font-size:1.15rem; color:var(--paper); line-height:1.3; margin-bottom:.5rem;
+        }
+        .glass-card p{ font-size:.85rem; color:var(--mist); line-height:1.55; margin-bottom:1rem; }
+        .glass-card .meta{
+            display:flex; align-items:center; justify-content:space-between;
+            font-size:.78rem; color:var(--mist);
+            border-top:1px solid rgba(255,255,255,.1); padding-top:.8rem;
+        }
+        .glass-card .meta a{ color: var(--paper); font-weight:600; text-decoration:none; }
+        .glass-card .meta a:hover{ color: var(--cyan); }
+
+        @media (prefers-reduced-motion: reduce){
+            .book, .hero-heading, .hero-sub, .hero-ctas, .glass-card{ transition:none !important; }
+        }
+        /* ================= END HERO SECTION ================= */
+
+        /* ================= POSTS SECTION ================= */
+        .section-label{
+            font-family:'JetBrains Mono',monospace; font-size:.75rem; letter-spacing:.2em;
+            text-transform:uppercase; color:var(--cyan);
+        }
+
+        /* ---------- Posts toolbar: search + category filter dropdown ---------- */
+        .posts-toolbar{
+            display:flex; flex-wrap:wrap; align-items:center; gap:.85rem;
+            margin-bottom:2rem;
+            position:relative;
+            z-index:30; /* own stacking context so the dropdown below always paints above post cards */
+            isolation:isolate;
+        }
+        .posts-search-wrap{ position:relative; flex:1 1 20rem; max-width:26rem; }
+        .posts-search-wrap svg{
+            width:1.15rem; height:1.15rem;
+            position:absolute; left:1rem; top:50%; transform:translateY(-50%);
+            color:var(--mist); pointer-events:none;
+            transition: color .2s ease;
+        }
+        #postsSearchInput{
+            width:100%; padding:.75rem 1.1rem .75rem 2.6rem; border-radius:999px;
+            border:1px solid var(--line); background:rgba(255,255,255,.05);
+            color:var(--paper); font-size:.9rem;
+            transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+        }
+        #postsSearchInput::placeholder{ color:var(--mist); }
+        #postsSearchInput:focus{
+            outline:none;
+            border-color: rgba(167,139,250,.55);
+            background: rgba(255,255,255,.08);
+            box-shadow: 0 0 0 3px rgba(124,58,237,.18);
+        }
+        #postsSearchInput:focus ~ svg{ color: var(--cyan); }
+
+        /* ---------- Category filter dropdown (categories come from $categories / DB) ---------- */
+        .filter-dropdown{ position:relative; flex-shrink:0; z-index:31; }
+        .filter-dropdown-btn{
+            display:inline-flex; align-items:center; gap:.55rem;
+            font-size:.85rem; font-weight:500; color:var(--paper);
+            padding:.7rem 1.2rem; border-radius:999px;
+            border:1px solid var(--line); background:rgba(255,255,255,.05);
+            cursor:pointer; transition: all .2s ease;
+        }
+        .filter-dropdown-btn:hover{ border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.09); }
+        .filter-dropdown-btn.has-active{
+            border-color:transparent;
+            background: linear-gradient(100deg,#c4b5fd,#67e8f9);
+            color:#0a0a12;
+        }
+        .filter-dropdown-btn i.fa-chevron-down{ font-size:.7rem; transition: transform .2s ease; }
+        .filter-dropdown.open .filter-dropdown-btn i.fa-chevron-down{ transform: rotate(180deg); }
+        /* Fully opaque solid panel (no see-through cards behind it), pinned
+           well above the post grid via the .posts-toolbar stacking context. */
+        .filter-dropdown-panel{
+            position:absolute; top:calc(100% + .6rem); left:0; z-index:100;
+            min-width:15rem; max-height:20rem; overflow-y:auto;
+            padding:.6rem; border-radius:1rem;
+            background: #14152a;
+            border:1px solid rgba(255,255,255,.18);
+            box-shadow: 0 24px 55px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.35);
+            display:flex; flex-direction:column; gap:.25rem;
+        }
+        .filter-option{
+            display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+            width:100%; text-align:left; font-size:.88rem; color:var(--paper);
+            padding:.65rem .8rem; border-radius:.6rem; border:none; background:transparent;
+            cursor:pointer; transition: background .15s ease, color .15s ease;
+        }
+        .filter-option:hover{ background:rgba(255,255,255,.09); }
+        .filter-option.active{ color:var(--cyan); background:rgba(34,211,238,.14); }
+        .filter-option i.fa-check{ font-size:.7rem; opacity:0; color:var(--cyan); }
+        .filter-option.active i.fa-check{ opacity:1; }
+
+        /* Themed scrollbar for the dropdown panel — replaces the default
+           chunky white/system scrollbar with a slim, on-brand thumb. */
+        .filter-dropdown-panel{
+            scrollbar-width: thin;                       /* Firefox */
+            scrollbar-color: rgba(167,139,250,.55) transparent; /* Firefox: thumb / track */
+        }
+        .filter-dropdown-panel::-webkit-scrollbar{
+            width: 6px;
+        }
+        .filter-dropdown-panel::-webkit-scrollbar-track{
+            background: transparent;
+            margin: .4rem 0; /* keeps the track clear of the panel's rounded corners */
+        }
+        .filter-dropdown-panel::-webkit-scrollbar-thumb{
+            background: linear-gradient(180deg, #a78bfa, #22d3ee);
+            border-radius: 999px;
+        }
+        .filter-dropdown-panel::-webkit-scrollbar-thumb:hover{
+            background: linear-gradient(180deg, #c4b5fd, #67e8f9);
+        }
+
+        .post-card{
+            border-radius: 1.1rem;
+            overflow:hidden;
+            transition: transform .3s cubic-bezier(.22,.61,.36,1), border-color .3s ease, box-shadow .3s ease, opacity .25s ease;
+            box-shadow: 0 18px 40px rgba(3,4,20,.35);
+            cursor: pointer;
+            position: relative;
+        }
+        .post-card:hover{ transform: translateY(-5px); border-color: rgba(255,255,255,.22); box-shadow: 0 26px 55px rgba(3,4,20,.5); }
+        /* Grid-level fade used by JS when swapping pages / filters / search
+           results, so the archive re-flows instead of popping instantly */
+        #postsGrid.is-transitioning{ opacity:.35; transform:translateY(4px); }
+        #postsGrid{ position:relative; z-index:1; transition: opacity .22s ease, transform .22s ease; }
+
+        /* Image fade-in once loaded, so covers don't hard-pop as they finish
+           downloading — noticeable on the first paint of the archive grid */
+        .card-img-wrap img, .cover-img img{ opacity:0; transition: opacity .5s ease, transform .4s ease; }
+        .card-img-wrap img.is-loaded, .cover-img img.is-loaded{ opacity:1; }
+        .post-card .cat{ font-family:'JetBrains Mono',monospace; font-size:.75rem; letter-spacing:.1em; color:var(--cyan); text-transform:uppercase; }
+        .post-card .views{ font-size:.75rem; color:var(--mist); }
+        .post-card h2 a{ color:var(--paper); text-decoration:none; transition:color .2s ease; }
+        .post-card h2 a:hover{ color:var(--cyan); }
+        .post-card p{ color:var(--mist); }
+        .post-card .card-meta{ border-top:1px solid var(--line); }
+        .post-card .card-meta a{ color:var(--paper); font-weight:600; text-decoration:none; }
+        .post-card .card-meta a:hover{ color:var(--cyan); }
+
+        /* ---------- Post card cover image ---------- */
+        .post-card .card-img-wrap{
+            position:relative;
+            width:100%;
+            aspect-ratio: 16 / 9;
+            overflow:hidden;
+            background: linear-gradient(135deg, #7c3aed, #22d3ee);
+        }
+        .post-card .card-img-wrap img{
+            width:100%; height:100%;
+            object-fit:cover;
+            display:block;
+            opacity:0;
+            transition: transform .4s ease, opacity .5s ease;
+        }
+        .post-card .card-img-wrap img.is-loaded{ opacity:1; }
+        .post-card:hover .card-img-wrap img{
+            transform: scale(1.05);
+        }
+        .post-card .card-img-wrap .no-image{
+            width:100%; height:100%;
+            display:flex; align-items:center; justify-content:center;
+            background: linear-gradient(135deg, rgba(124,58,237,.55), rgba(34,211,238,.45));
+        }
+        .post-card .card-img-wrap .no-image i{
+            font-size:1.8rem; color: rgba(255,255,255,.65);
+        }
+
+        .pill-btn{
+            padding:.6rem 1.3rem; border-radius:999px; font-size:.85rem; font-weight:500;
+            color:var(--paper); border:1px solid var(--line); background:rgba(255,255,255,.03);
+            transition: all .2s ease;
+        }
+        .pill-btn:hover:not(:disabled){ border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.08); }
+        .pill-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+        /* ================= SECTION HEADER (shared by Popular Posts + Reviews) ================= */
+        .section-heading{
+            display:flex; align-items:center; gap:1rem; margin-bottom:1.75rem;
+        }
+        .section-chip{
+            flex-shrink:0;
+            width:2.75rem; height:2.75rem; border-radius:.9rem;
+            display:flex; align-items:center; justify-content:center;
+            font-size:1.05rem;
+            background: linear-gradient(155deg, rgba(124,58,237,.28), rgba(34,211,238,.18));
+            border:1px solid rgba(255,255,255,.14);
+            color: var(--cyan);
+            box-shadow: 0 10px 24px rgba(124,58,237,.2);
+        }
+        .section-title{
+            font-weight:700; font-size:1.6rem; color:var(--paper);
+            display:flex; align-items:center; gap:.65rem; line-height:1.2;
+        }
+        .count-badge{
+            font-family:'JetBrains Mono',monospace; font-size:.75rem; font-weight:500;
+            letter-spacing:.04em; color:var(--cyan);
+            background: rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.25);
+            padding:.2rem .55rem; border-radius:999px;
+        }
+
+        /* ================= POPULAR POSTS — ranked cards ================= */
+        .rank-grid{
+            display:grid; grid-template-columns:1fr; gap:1rem;
+        }
+        @media(min-width:768px){ .rank-grid{ grid-template-columns:1fr 1fr; } }
+        .rank-card{
+            position:relative;
+            display:flex; gap:1.1rem; align-items:flex-start;
+            padding:1.35rem 1.4rem;
+            border-radius:1rem;
+            text-decoration:none;
+            overflow:hidden;
+            transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease, background .3s ease;
+            cursor: pointer;
+        }
+        .rank-card::before{
+            content:''; position:absolute; inset:0; z-index:0;
+            background: linear-gradient(120deg, rgba(124,58,237,.08), transparent 55%);
+            opacity:0; transition: opacity .3s ease;
+        }
+        .rank-card:hover{
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,.22);
+            box-shadow: 0 20px 45px rgba(3,4,20,.45);
+        }
+        .rank-card:hover::before{ opacity:1; }
+        .rank-num{
+            position:relative; z-index:1; flex-shrink:0;
+            font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.5rem;
+            width:2.9rem; height:2.9rem; border-radius:.8rem;
+            display:flex; align-items:center; justify-content:center;
+            background: linear-gradient(155deg, rgba(255,255,255,.1), rgba(255,255,255,.02));
+            border:1px solid rgba(255,255,255,.14);
+            color:var(--cyan);
+        }
+        .rank-card:nth-child(1) .rank-num{ background:linear-gradient(135deg,#f59e0b,#fbbf24); color:#1a1204; border-color:transparent; }
+        .rank-card:nth-child(2) .rank-num{ background:linear-gradient(135deg,#cbd5e1,#e2e8f0); color:#1a1204; border-color:transparent; }
+        .rank-card:nth-child(3) .rank-num{ background:linear-gradient(135deg,#c2825a,#e0a479); color:#1a1204; border-color:transparent; }
+        .rank-body{ position:relative; z-index:1; flex:1; min-width:0; }
+        .rank-body h4{
+            font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.02rem;
+            color:var(--paper); line-height:1.35; margin-bottom:.4rem;
+            transition: color .2s ease;
+        }
+        .rank-card:hover .rank-body h4{ color:var(--cyan); }
+        .rank-body p{
+            font-size:.82rem; color:var(--mist); line-height:1.55; margin-bottom:.85rem;
+        }
+        .rank-meta{
+            display:flex; align-items:center; gap:.9rem; flex-wrap:wrap;
+            font-size:.78rem; color:var(--mist);
+        }
+        .rank-meta .rank-views{ display:inline-flex; align-items:center; gap:.35rem; font-weight:600; color:var(--paper); }
+        .rank-meta .rank-views i{ color:var(--cyan); }
+        .rank-meta .rank-cat{
+            font-family:'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase;
+            font-size:.75rem; color:var(--violet-light, #c4b5fd);
+        }
+
+        /* ================= SHARE BUTTON ON CARDS ================= */
+        .share-btn-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(34, 211, 238, 0.15));
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--paper);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            z-index: 5;
+        }
+
+        .share-btn-card:hover {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(34, 211, 238, 0.3));
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2);
+        }
+
+        .share-btn-card i {
+            font-size: 0.85rem;
+            color: var(--cyan);
+        }
+
+        .share-btn-card span {
+            font-size: 0.75rem;
+            letter-spacing: 0.02em;
+        }
+
+        /* ================= REVIEWS — testimonial grid ================= */
+        .reviews-grid-wrap{ position:relative; }
+        .reviews-grid{
+            display:grid; grid-template-columns:1fr; gap:1rem;
+            max-height:38rem; overflow-y:auto;
+            padding:.25rem .6rem .25rem .25rem;
+        }
+        @media(min-width:768px){ .reviews-grid{ grid-template-columns:1fr 1fr; } }
+        .reviews-grid::-webkit-scrollbar{ width:6px; }
+        .reviews-grid::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.15); border-radius:999px; }
+        .reviews-grid-wrap::after{
+            content:''; position:absolute; left:0; right:.6rem; bottom:0; height:3.5rem;
+            background: linear-gradient(180deg, transparent, rgba(11,12,26,.85));
+            border-radius:0 0 1.1rem 1.1rem;
+            pointer-events:none;
+        }
+        .review-card{
+            position:relative;
+            display:flex; flex-direction:column;
+            padding:1.35rem 1.4rem 1.1rem;
+            border-radius:1rem;
+            text-decoration:none;
+            background: linear-gradient(155deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+            border:1px solid var(--line);
+            transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease;
+        }
+        .review-card:hover{
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,.22);
+            box-shadow: 0 20px 45px rgba(3,4,20,.45);
+        }
+        .review-quote-mark{
+            position:absolute; top:.9rem; right:1.1rem;
+            font-size:1.3rem; color:rgba(255,255,255,.08);
+        }
+        .review-stars-row{
+            display:flex; align-items:center; justify-content:space-between; margin-bottom:.7rem;
+        }
+        .review-time{ font-size:.75rem; color:var(--mist); }
+        .review-quote{
+            font-size:.9rem; color:var(--paper); line-height:1.6;
+            margin-bottom:1rem; flex:1;
+            transition: color .2s ease;
+        }
+        .review-card:hover .review-quote{ color:#fff; }
+        .review-footer{
+            display:flex; align-items:center; gap:.7rem;
+            border-top:1px solid var(--line); padding-top:.85rem;
+        }
+        .review-avatar{
+            flex-shrink:0; width:2.1rem; height:2.1rem; border-radius:999px;
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.8rem;
+            color:#0a0a12;
+        }
+        .review-footer-text{ min-width:0; flex:1; }
+        .review-author{
+            display:block; font-size:.82rem; font-weight:600; color:var(--paper);
+        }
+        .review-post-title{
+            display:block; font-size:.78rem; color:var(--cyan);
+            overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        }
+
+        /* Sits above the fixed book field so archive content stays readable */
+        .page-content{ position:relative; z-index:1; }
+
+        /* Scroll-reveal targets — GSAP flips these to visible */
+        .reveal-up{ opacity:0; transform:translateY(28px); }
+        .reveal-item{ opacity:0; transform:translateY(18px); }
+
+        /* ================= NAVBAR (redesigned, mobile-responsive) ================= */
+        #navbar{
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(11,12,26,.86), rgba(11,12,26,.62));
+        }
+        #navbar::after{
+            content:''; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+            background: linear-gradient(90deg, transparent, rgba(124,58,237,.55), rgba(34,211,238,.5), transparent);
+            opacity:.7;
+        }
+        .nav-logo{
+            display:flex; align-items:center; gap:.6rem;
+            text-decoration:none;
+        }
+        .nav-logo-mark{
+            display:flex; align-items:center; justify-content:center;
+            width:2.25rem; height:2.25rem; border-radius:.7rem;
+            background: linear-gradient(135deg, rgba(124,58,237,.35), rgba(34,211,238,.25));
+            border:1px solid rgba(255,255,255,.14);
+            transition: transform .3s ease, box-shadow .3s ease;
+        }
+        .nav-logo:hover .nav-logo-mark{
+            transform: rotate(-6deg) scale(1.05);
+            box-shadow: 0 8px 22px rgba(124,58,237,.35);
+        }
+        .nav-logo-text{
+            font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.05rem;
+            letter-spacing:-.01em; color:var(--paper);
+        }
+        /* Segmented-pill nav group — the redesigned link cluster (desktop) */
+        .nav-links{
+            display:flex; align-items:center; gap:.2rem;
+            padding:.3rem; border-radius:999px;
+            background: rgba(255,255,255,.04);
+            border:1px solid var(--line);
+        }
+        .nav-link{
+            color: var(--mist);
+            text-decoration: none;
+            font-size: .85rem;
+            font-weight: 500;
+            transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+            padding: .5rem 1rem;
+            border-radius: 999px;
+            white-space:nowrap;
+        }
+        .nav-link:hover{
+            color: var(--paper);
+            background: rgba(255,255,255,.07);
+        }
+        .nav-link.active{
+            color: #0a0a12;
+            background: linear-gradient(100deg,#c4b5fd,#67e8f9);
+            box-shadow: 0 6px 18px rgba(124,58,237,.3);
+        }
+        #userMenuBtn{
+            box-shadow: 0 4px 16px rgba(124,58,237,.3);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        #userMenuBtn:hover{ transform: scale(1.06); box-shadow: 0 6px 20px rgba(124,58,237,.45); }
+        #userMenu{
+            overflow:hidden;
+            box-shadow: 0 24px 48px rgba(3,4,20,.55);
+            transform-origin: top right;
+        }
+        #userMenu a, #userMenu button[type="submit"]{
+            display:flex; align-items:center; gap:.55rem;
+        }
+        #userMenu a:hover, #userMenu button[type="submit"]:hover{
+            background: rgba(255,255,255,.06);
+            color: var(--cyan) !important;
+        }
+        #userMenu i{ width:1rem; text-align:center; color:var(--mist); font-size:.8rem; }
+
+        /* ---------- Mobile hamburger toggle ---------- */
+        .nav-toggle-btn{
+            display:none;
+            align-items:center; justify-content:center;
+            width:2.5rem; height:2.5rem; border-radius:.7rem;
+            border:1px solid var(--line); background:rgba(255,255,255,.04);
+            color:var(--paper); cursor:pointer;
+            transition: background .2s ease, border-color .2s ease;
+            flex-shrink:0;
+        }
+        .nav-toggle-btn:hover{ background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.3); }
+        .nav-toggle-btn .icon-bars,
+        .nav-toggle-btn .icon-close{ font-size:1.05rem; }
+        .nav-toggle-btn .icon-close{ display:none; }
+        .nav-toggle-btn[aria-expanded="true"] .icon-bars{ display:none; }
+        .nav-toggle-btn[aria-expanded="true"] .icon-close{ display:inline-block; }
+
+        /* ---------- Mobile dropdown panel with the same links, stacked ---------- */
+        #mobileNavPanel{
+            display:none;
+            flex-direction:column;
+            gap:.25rem;
+            padding: .75rem 0 1.1rem;
+            border-top: 1px solid var(--line);
+        }
+        #mobileNavPanel.open{ display:flex; }
+        #mobileNavPanel .nav-link{
+            width:100%;
+            padding:.85rem 1rem;
+            border-radius:.75rem;
+            text-align:left;
+        }
+        #mobileNavPanel .nav-link.active{
+            box-shadow:none;
+        }
+
+        @media(max-width:767px){
+            .nav-links{ display:none; }
+            .nav-toggle-btn{ display:inline-flex; }
+        }
+
+        /* ================= FOOTER ================= */
+        .site-footer{
+            position:relative; z-index:1; margin-top:4rem;
+            background: linear-gradient(180deg, rgba(11,12,26,0), rgba(11,12,26,.92) 25%, var(--panel));
+            border-top:1px solid var(--line);
+        }
+        .footer-inner{ padding: 3.5rem 1rem 2rem; }
+        .footer-grid{ display:grid; grid-template-columns:1fr; gap:2.5rem; }
+        @media(min-width:768px){
+            .footer-grid{ grid-template-columns: 1.4fr 1fr 1fr 1.3fr; gap:2rem; }
+        }
+        .footer-brand .footer-logo{ margin-bottom:1rem; }
+        .footer-tagline{
+            color:var(--mist); font-size:.9rem; line-height:1.65; max-width:22rem; margin-bottom:1.25rem;
+        }
+        .footer-social{ display:flex; gap:.65rem; }
+        .footer-social a{
+            width:2.25rem; height:2.25rem; border-radius:.6rem;
+            display:flex; align-items:center; justify-content:center;
+            border:1px solid var(--line); background:rgba(255,255,255,.03);
+            color:var(--mist); text-decoration:none;
+            transition: all .2s ease;
+        }
+        .footer-social a:hover{
+            color:var(--cyan); border-color:rgba(255,255,255,.3);
+            background:rgba(255,255,255,.07); transform:translateY(-2px);
+        }
+        .footer-col h5{
+            font-family:'Space Grotesk',sans-serif; font-size:.95rem; font-weight:600;
+            color:var(--paper); margin-bottom:1rem;
+        }
+        .footer-col ul{ list-style:none; display:flex; flex-direction:column; gap:.65rem; }
+        .footer-col ul a{
+            display:inline-flex; align-items:center; gap:.55rem;
+            color:var(--mist); font-size:.88rem; text-decoration:none; transition:color .2s ease;
+            background:none; border:none; padding:0; cursor:pointer; font-family:'Inter',sans-serif;
+        }
+        .footer-col ul a:hover{ color:var(--cyan); }
+        .footer-col ul a i{ width:.9rem; text-align:center; font-size:.78rem; color:var(--mist); transition:color .2s ease; }
+        .footer-col ul a:hover i{ color:var(--cyan); }
+        .footer-newsletter p{ color:var(--mist); font-size:.85rem; line-height:1.55; margin-bottom:1rem; }
+        .footer-form{ display:flex; gap:.5rem; }
+        .footer-form button{
+            padding:.65rem 1.1rem; border-radius:.7rem; font-size:.85rem; font-weight:600;
+            color:#0a0a12; background:linear-gradient(100deg,#e9d5ff,#a5f3fc);
+            border:none; cursor:pointer;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        .footer-form button:hover{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(124,58,237,.35); }
+
+        /* ---------- "Your Account" footer column — fills the space the
+           newsletter column would otherwise leave empty when logged in ---------- */
+        .footer-account-card{
+            display:flex; align-items:center; gap:.75rem;
+            padding:.85rem .9rem; margin-bottom:1.1rem;
+            border-radius:.9rem;
+            background: linear-gradient(155deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+            border:1px solid var(--line);
+        }
+        .footer-account-avatar{
+            flex-shrink:0; width:2.5rem; height:2.5rem; border-radius:999px;
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.95rem;
+            color:#0a0a12;
+        }
+        .footer-account-info{ min-width:0; }
+        .footer-account-name{
+            display:block; font-size:.88rem; font-weight:600; color:var(--paper);
+            overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        }
+        .footer-account-role{
+            display:block; font-size:.72rem; color:var(--cyan);
+            font-family:'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase;
+        }
+        .footer-logout-form{ margin:0; }
+        .footer-logout-form button{
+            width:100%; text-align:left;
+            display:inline-flex; align-items:center; gap:.55rem;
+            background:none; border:none; padding:0; cursor:pointer;
+            color:var(--mist); font-size:.88rem; font-family:'Inter',sans-serif;
+            transition:color .2s ease;
+        }
+        .footer-logout-form button:hover{ color:var(--cyan); }
+        .footer-logout-form button i{ width:.9rem; text-align:center; font-size:.78rem; }
+
+        .footer-bottom{
+            display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between;
+            border-top:1px solid var(--line); margin-top:2.5rem; padding-top:1.5rem;
+            font-size:.8rem; color:var(--mist);
+        }
+        .footer-bottom-links{ display:flex; gap:1.25rem; }
+        .footer-bottom-links a{ color:var(--mist); text-decoration:none; transition:color .2s ease; background:none; border:none; cursor:pointer; font-size:.8rem; font-family:'Inter',sans-serif; padding:0; }
+        .footer-bottom-links a:hover{ color:var(--cyan); }
+
+        /* ================= LEGAL MODAL (Privacy Policy / Terms of Service) ================= */
+        .legal-modal-overlay{
+            position:fixed; inset:0; z-index:200;
+            display:none;
+            align-items:center; justify-content:center;
+            padding:1.5rem;
+            background: rgba(3,4,16,.72);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .legal-modal-overlay.open{ display:flex; }
+        .legal-modal{
+            position:relative; width:100%; max-width:38rem; max-height:82vh;
+            display:flex; flex-direction:column;
+            background: linear-gradient(155deg, #14152a, #0b0c1a);
+            border:1px solid rgba(255,255,255,.14);
+            border-radius:1.25rem;
+            box-shadow: 0 40px 80px rgba(3,4,20,.6);
+            overflow:hidden;
+            animation: legalModalIn .25s ease;
+        }
+        @keyframes legalModalIn{
+            from{ opacity:0; transform: translateY(14px) scale(.98); }
+            to{ opacity:1; transform: translateY(0) scale(1); }
+        }
+        .legal-modal-header{
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1.25rem 1.5rem; flex-shrink:0;
+            border-bottom:1px solid var(--line);
+        }
+        .legal-modal-header h3{
+            font-size:1.1rem; font-weight:600; color:var(--paper);
+            display:flex; align-items:center; gap:.65rem;
+        }
+        .legal-modal-header h3 i{ color:var(--cyan); font-size:.95rem; }
+        .legal-modal-close{
+            width:2.1rem; height:2.1rem; border-radius:.6rem; flex-shrink:0;
+            display:flex; align-items:center; justify-content:center;
+            border:1px solid var(--line); background:rgba(255,255,255,.04);
+            color:var(--mist); cursor:pointer;
+            transition: all .2s ease;
+        }
+        .legal-modal-close:hover{ color:var(--paper); background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.3); }
+        .legal-modal-body{
+            padding:1.5rem; overflow-y:auto;
+            font-size:.86rem; line-height:1.75; color:var(--mist);
+            scrollbar-width: thin; scrollbar-color: rgba(167,139,250,.55) transparent;
+        }
+        .legal-modal-body::-webkit-scrollbar{ width:6px; }
+        .legal-modal-body::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.15); border-radius:999px; }
+        .legal-modal-updated{
+            display:inline-block; font-family:'JetBrains Mono',monospace; font-size:.75rem;
+            letter-spacing:.08em; text-transform:uppercase; color:var(--cyan);
+            background: rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.25);
+            padding:.3rem .6rem; border-radius:999px; margin-bottom:1.1rem;
+        }
+        .legal-modal-body h4{
+            font-family:'Space Grotesk',sans-serif; font-size:.92rem; color:var(--paper);
+            margin: 1.35rem 0 .5rem;
+        }
+        .legal-modal-body h4:first-of-type{ margin-top:0; }
+        .legal-modal-body p{ margin-bottom:.85rem; }
+        .legal-modal-body ul{ margin:0 0 .85rem 1.2rem; display:flex; flex-direction:column; gap:.4rem; }
+        .legal-modal-footer{
+            padding:1rem 1.5rem; border-top:1px solid var(--line); flex-shrink:0;
+            display:flex; align-items:center; justify-content:space-between; gap:1rem;
+        }
+        .legal-modal-footer span{ font-size:.75rem; color:var(--mist); }
+        .legal-modal-footer button{
+            padding:.6rem 1.3rem; border-radius:999px; font-size:.85rem; font-weight:600;
+            color:#0a0a12; background:linear-gradient(100deg,#e9d5ff,#a5f3fc);
+            border:none; cursor:pointer;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        .legal-modal-footer button:hover{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(124,58,237,.35); }
+        @media(max-width:640px){
+            .legal-modal-footer{ flex-direction:column; align-items:stretch; }
+            .legal-modal-footer button{ width:100%; }
+        }
+
+        /* ================= SHARE MODAL ================= */
+        .share-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: rgba(3, 4, 16, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            animation: shareOverlayIn 0.25s ease;
+        }
+
+        .share-modal-overlay.open {
+            display: flex;
+        }
+
+        @keyframes shareOverlayIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .share-modal {
+            position: relative;
+            width: 100%;
+            max-width: 32rem;
+            background: linear-gradient(155deg, #14152a, #0b0c1a);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 1.25rem;
+            box-shadow: 0 40px 80px rgba(3, 4, 20, 0.6);
+            overflow: hidden;
+            animation: shareModalIn 0.3s ease;
+        }
+
+        @keyframes shareModalIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .share-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+        }
+
+        .share-modal-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--paper);
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .share-modal-close {
+            width: 2.1rem;
+            height: 2.1rem;
+            border-radius: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--mist);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .share-modal-close:hover {
+            color: var(--paper);
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .share-modal-body {
+            padding: 1.5rem;
+        }
+
+        /* URL input with copy button */
+        .share-url-wrapper {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--line);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            padding: 0.15rem;
+        }
+
+        .share-url-input {
+            flex: 1;
+            padding: 0.6rem 0.9rem;
+            background: transparent;
+            border: none;
+            color: var(--paper);
+            font-size: 0.82rem;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            min-width: 0;
+        }
+
+        .share-url-input::selection {
+            background: rgba(124, 58, 237, 0.3);
+        }
+
+        .share-copy-btn {
+            flex-shrink: 0;
+            padding: 0.6rem 1.1rem;
+            border: none;
+            border-radius: 0.6rem;
+            background: linear-gradient(100deg, #c4b5fd, #67e8f9);
+            color: #0a0a12;
+            font-weight: 600;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .share-copy-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+        }
+
+        .share-copy-btn.copied {
+            background: linear-gradient(100deg, #34d399, #6ee7b7);
+        }
+
+        /* Social share buttons grid */
+        .share-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .share-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.85rem 0.4rem;
+            border: 1px solid var(--line);
+            border-radius: 0.8rem;
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--paper);
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .share-btn i {
+            font-size: 1.5rem;
+            transition: transform 0.2s ease;
+        }
+
+        .share-btn:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 20px rgba(3, 4, 20, 0.4);
+        }
+
+        .share-btn:hover i {
+            transform: scale(1.1);
+        }
+
+        /* Platform-specific colors */
+        .share-btn.whatsapp:hover {
+            border-color: #25D366;
+            background: rgba(37, 211, 102, 0.1);
+        }
+        .share-btn.whatsapp i {
+            color: #25D366;
+        }
+
+        .share-btn.instagram:hover {
+            border-color: #E4405F;
+            background: rgba(228, 64, 95, 0.1);
+        }
+        .share-btn.instagram i {
+            color: #E4405F;
+        }
+
+        .share-btn.twitter:hover {
+            border-color: #1DA1F2;
+            background: rgba(29, 161, 242, 0.1);
+        }
+        .share-btn.twitter i {
+            color: #1DA1F2;
+        }
+
+        .share-btn.facebook:hover {
+            border-color: #1877F2;
+            background: rgba(24, 119, 242, 0.1);
+        }
+        .share-btn.facebook i {
+            color: #1877F2;
+        }
+
+        .share-btn.linkedin:hover {
+            border-color: #0A66C2;
+            background: rgba(10, 102, 194, 0.1);
+        }
+        .share-btn.linkedin i {
+            color: #0A66C2;
+        }
+
+        .share-btn.email:hover {
+            border-color: #EA4335;
+            background: rgba(234, 67, 53, 0.1);
+        }
+        .share-btn.email i {
+            color: #EA4335;
+        }
+
+        .share-btn.telegram:hover {
+            border-color: #0088CC;
+            background: rgba(0, 136, 204, 0.1);
+        }
+        .share-btn.telegram i {
+            color: #0088CC;
+        }
+
+        .share-btn.copy-link:hover {
+            border-color: #7c3aed;
+            background: rgba(124, 58, 237, 0.1);
+        }
+        .share-btn.copy-link i {
+            color: #7c3aed;
+        }
+
+        .share-tip {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.6rem 0.9rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--line);
+            border-radius: 0.6rem;
+            font-size: 0.78rem;
+            color: var(--mist);
+        }
+
+        .share-tip i {
+            color: var(--cyan);
+            font-size: 0.9rem;
+        }
+
+        /* Toast notification */
+        .share-toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(5rem);
+            background: linear-gradient(155deg, #14152a, #0b0c1a);
+            border: 1px solid var(--line);
+            border-radius: 0.8rem;
+            padding: 0.8rem 1.5rem;
+            color: var(--paper);
+            font-size: 0.9rem;
+            box-shadow: 0 20px 40px rgba(3, 4, 20, 0.5);
+            z-index: 400;
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }
+
+        .share-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .share-toast i {
+            margin-right: 0.6rem;
+            color: var(--cyan);
+        }
+
+        /* ================= MOBILE RESPONSIVE ENHANCEMENTS ================= */
+        @media (max-width: 767px){
+            .nav-logo-mark{ width:2rem; height:2rem; }
+            #userMenu{ width:12.5rem; }
+            .hero-shelf{ min-height:auto; }
+            .hero-shelf .hero-inner{
+                min-height:auto; padding: 3.25rem 1.25rem 2.75rem; gap:2.25rem;
+            }
+            .hero-heading{ font-size: clamp(2rem, 8vw, 2.75rem); margin:.85rem 0 1rem; }
+            .hero-sub{ font-size:.95rem; line-height:1.65; margin-bottom:1.75rem; }
+            .hero-ctas{ gap:.65rem; margin-bottom:1.75rem; }
+            .btn-primary, .btn-secondary{ padding:.8rem 1.35rem; font-size:.9rem; }
+            .hero-stats{ gap:1.5rem; flex-wrap:wrap; row-gap:.75rem; }
+            .hero-stats div b{ font-size:1.2rem; }
+            .hero-scene{ height:19rem; }
+            .dev-laptop-svg{ width:84%; }
+            .dev-float{ width:2.3rem; height:2.3rem; font-size:.9rem; }
+            .section-title{ font-size:1.35rem; }
+            .section-chip{ width:2.4rem; height:2.4rem; font-size:.9rem; }
+            .rank-card{ padding:1.1rem 1.15rem; gap:.85rem; }
+            .rank-num{ width:2.5rem; height:2.5rem; font-size:1.2rem; }
+            .review-card{ padding:1.15rem 1.2rem .95rem; }
+            .reviews-grid{ max-height:30rem; }
+            #paginationControls{ gap:.65rem; }
+            .pill-btn{ padding:.55rem 1rem; font-size:.8rem; }
+            .footer-inner{ padding: 2.75rem 1rem 1.5rem; }
+            .footer-grid{ gap:2rem; }
+            .footer-bottom{ flex-direction:column; align-items:flex-start; gap:.85rem; }
+            .posts-search-wrap{ max-width:100%; }
+            .legal-modal{ max-height:88vh; }
+            .legal-modal-header{ padding:1.1rem 1.25rem; }
+            .legal-modal-body{ padding:1.25rem; }
+            .legal-modal-footer{ padding:.9rem 1.25rem; }
+            
+            /* Share modal responsive */
+            .share-buttons-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .share-modal {
+                max-width: 100%;
+                margin: 0.5rem;
+                border-radius: 1rem;
+            }
+            
+            .share-url-wrapper {
+                flex-direction: column;
+                gap: 0.3rem;
+            }
+            
+            .share-url-input {
+                padding: 0.5rem 0.7rem;
+                font-size: 0.75rem;
+            }
+
+            .share-btn-card {
+                padding: 0.25rem 0.6rem;
+                font-size: 0.65rem;
+            }
+
+            .share-btn-card i {
+                font-size: 0.7rem;
+            }
+
+            .share-btn-card span {
+                font-size: 0.6rem;
+            }
+        }
+        @media (max-width: 420px){
+            .hero-ctas{ flex-direction:column; align-self:stretch; }
+            .hero-ctas a{ justify-content:center; }
+            .hero-stats{ gap:1.1rem; }
+            .footer-form{ flex-direction:column; }
+            .footer-form button{ width:100%; }
+            
+            .share-buttons-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+    </style>
+
+</head>
+<body>
+<noscript>
+    <div style="background:#1a1a2e; border:1px solid #ff6b6b; color:#fff; padding:1rem; text-align:center; margin:1rem;">
+        <strong>⚠️ JavaScript Required:</strong> Some features of this site require JavaScript.
+    </div>
+</noscript>
+
+    <!-- Ambient floating-book field — fixed behind the whole page, not just the hero -->
+    <div class="book-field-global" id="bookFieldGlobal" aria-hidden="true"></div>
+
+    <!-- Navbar (redesigned: logo, segmented pill nav-links incl. About & Contact, auth, mobile hamburger) -->
+    <nav id="navbar" class="glass fixed top-0 left-0 right-0 z-50 transition-transform duration-300" style="border-left:none;border-right:none;border-top:none;">
         <div class="max-w-6xl mx-auto px-4">
             <div class="flex items-center justify-between h-16">
 
                 <!-- Left: Icon/Logo -->
-                <div class="flex items-center flex-shrink-0">
-                    <a href="/" class="flex items-center gap-2">
-                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        <span class="font-bold text-lg text-gray-800 hidden sm:inline">MyBlog</span>
+                <div class="flex items-center flex-shrink-0" data-nav-el="logo">
+                    <a href="{{ route('home') }}" aria-label="Go to homepage" class="nav-logo">
+                        <span class="nav-logo-mark">
+                            <svg
+                                class="w-5 h-5"
+                                style="color:#67e8f9"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                                focusable="false">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </span>
+                        <span class="nav-logo-text hidden sm:inline">NSential</span>
                     </a>
                 </div>
 
-                <!-- Middle: Search bar -->
-                <div class="flex-1 max-w-md mx-4">
-                    <div class="relative">
-                        <input
-                            type="text"
-                            id="searchInput"
-                            placeholder="Search posts..."
-                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            oninput="filterPosts(this.value)"
-                        >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
+                <!-- Center: Nav links (Posts, Categories, Reviews, About, Contact) — desktop only -->
+                <div class="hidden md:flex nav-links" data-nav-el="links">
+                    <a href="#postsGrid" class="nav-link active">Posts</a>
+                    <a href="{{ route('about') }}" class="nav-link">About</a>
+                    <a href="{{ route('contact') }}" class="nav-link">Contact</a>
                 </div>
 
-                <!-- Right: Auth area -->
-                <div class="flex-shrink-0 relative">
+                <!-- Right: Auth area + mobile hamburger toggle -->
+                <div class="flex items-center gap-3 flex-shrink-0" data-nav-el="auth">
                     @guest
-                        <a href="/login"
-                           class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors inline-block">
+                        <a href="{{ route('login') }}"
+                           aria-label="Subscribe to the blog"
+                           class="grad-btn text-sm px-4 py-2 rounded-full inline-block">
                             Subscribe
                         </a>
                     @else
-                        <button id="userMenuBtn" onclick="toggleUserMenu()"
-                                class="flex items-center justify-center w-9 h-9 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors text-gray-700 font-semibold text-sm">
+                        <button
+                            id="userMenuBtn"
+                            onclick="toggleUserMenu()"
+                            aria-label="Open user account menu"
+                            aria-haspopup="menu"
+                            aria-expanded="false"
+                            aria-controls="userMenu"
+                            class="flex items-center justify-center w-9 h-9 rounded-full font-semibold text-sm transition-colors"
+                            style="background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#0a0a12">
                             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                         </button>
 
-                        <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
-    <div class="px-4 py-2 text-sm text-gray-500 border-b border-gray-100">
-        {{ auth()->user()->name }}
-    </div>
-    @if(in_array(auth()->user()->role, ['admin', 'author']))
-        <a href="/profile"
-           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-            Profile
-        </a>
-    @endif
-    <form method="POST" action="/logout">
-        @csrf
-        <button type="submit"
-                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-            Logout
-        </button>
-    </form>
-</div>
+                        <div id="userMenu" role="menu" aria-label="Account menu" class="glass hidden absolute right-0 mt-2 w-48 rounded-lg py-1 z-50" style="top:100%;">
+                            <div class="px-4 py-2 text-sm border-b" style="color:var(--mist);border-color:var(--line)">
+                                {{ auth()->user()->name }}
+                            </div>
+                            @if(in_array(auth()->user()->role, ['author']))
+                                <a href="/profile"
+                                   class="px-4 py-2 text-sm transition-colors"
+                                   style="color:var(--paper)">
+                                    <i class="fas fa-user"></i> Profile
+                                </a>
+                            @endif
+                            @if(auth()->user()->role === 'admin')
+                                <a href="/admin"
+                                   class="px-4 py-2 text-sm transition-colors"
+                                   style="color:var(--paper)">
+                                    <i class="fas fa-gauge"></i> Admin Dashboard
+                                </a>
+                            @endif
+                            <form method="POST" action="/logout">
+                                @csrf
+                                <button type="submit"
+                                        class="w-full text-left px-4 py-2 text-sm transition-colors"
+                                        style="color:var(--paper)">
+                                    <i class="fas fa-arrow-right-from-bracket"></i> Logout
+                                </button>
+                            </form>
+                        </div>
                     @endguest
+
+                    <!-- Mobile hamburger toggle: only visible under md breakpoint, controls #mobileNavPanel -->
+                    <button
+                        type="button"
+                        id="navToggleBtn"
+                        class="nav-toggle-btn"
+                        aria-label="Toggle navigation menu"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="mobileNavPanel"
+                        onclick="toggleMobileNav()"
+                    >
+                        <i class="fas fa-bars icon-bars" aria-hidden="true"></i>
+                        <i class="fas fa-xmark icon-close" aria-hidden="true"></i>
+                    </button>
                 </div>
 
+            </div>
+
+            <!-- Mobile nav panel: same links as desktop, stacked, shown when hamburger is open -->
+            <div id="mobileNavPanel" role="menu" aria-label="Mobile navigation">
+                <a href="#postsGrid" class="nav-link active" role="menuitem" onclick="closeMobileNav()">Posts</a>
+                <a href="{{route('about')}}" class="nav-link" role="menuitem" onclick="closeMobileNav()">About</a>
+                <a href="{{route('contact')}}" class="nav-link" role="menuitem" onclick="closeMobileNav()">Contact</a>
             </div>
         </div>
     </nav>
 
     <div class="h-16"></div> <!-- spacer to offset fixed navbar height -->
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-gray-800 mb-2">Blog Posts</h1>
-        <p class="text-gray-600 mb-6">Showing {{ $postCount }} published posts</p>
+    {{-- ============================= HERO SECTION ============================= --}}
+    @php
+        // Use the real first post as the featured card — falls back gracefully
+        // if $posts is empty, so the section never breaks on an empty blog.
+        $fp = $featuredPost
+            ?? (isset($posts) && count($posts) ? $posts[0] : null)
+            ?? (isset($popularPosts) && count($popularPosts) ? $popularPosts[0] : null);
 
-        <!-- Category filter bar -->
-        <div class="flex flex-wrap gap-2 mb-8" id="categoryFilters">
-            <button
-                type="button"
-                class="category-btn px-4 py-1.5 rounded-full text-sm font-medium border border-blue-600 bg-blue-600 text-white transition-colors"
-                data-category="all"
-                onclick="filterByCategory('all', this)"
-            >
-                All
-            </button>
-            @foreach($categories as $category)
-            <button
-                type="button"
-                class="category-btn px-4 py-1.5 rounded-full text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
-                data-category="{{ $category->slug }}"
-                onclick="filterByCategory('{{ $category->slug }}', this)"
-            >
-                {{ $category->name }}
-            </button>
-            @endforeach
+        $fpReadTime = null;
+        if ($fp) {
+            $wordCount = str_word_count(strip_tags($fp['content'] ?? $fp['excerpt'] ?? ''));
+            $fpReadTime = max(1, (int) ceil($wordCount / 200)) . ' min read';
+        }
+
+        $fpImageUrl = null;
+        if ($fp && !empty($fp['image'])) {
+            $fpImageUrl = Str::startsWith($fp['image'], ['http://', 'https://'])
+                ? $fp['image']
+                : asset('storage/' . $fp['image']);
+        }
+    @endphp
+
+    <section class="hero-shelf" id="heroShelf">
+        <div class="hero-grain" aria-hidden="true"></div>
+
+        <div class="hero-inner">
+            <!-- Left: content -->
+            <div>
+
+<h1 class="hero-heading" data-hero-el="heading">
+    <span class="block">Insights That Matter.</span>
+    <span class="block">Knowledge That <span class="grad-text">Empowers.</span></span>
+</h1>
+
+<p class="hero-sub" data-hero-el="sub">
+    Practical insights and ideas for a smarter, better-informed world.
+</p>
+
+                <div class="hero-ctas" data-hero-el="ctas">
+                    <a href="#postsGrid" class="btn-primary">
+                        Start Reading
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </a>
+                    <a href="#categoryFilters" class="btn-secondary">Browse Categories</a>
+                </div>
+
+                <div class="hero-stats" data-hero-el="stats">
+                   @php
+    $heroStats = $heroStats ?? [
+        ['value' => number_format($postCount ?? 0), 'label' => 'Articles'],
+        ['value' => number_format(count($categories ?? [])), 'label' => 'Topics'],
+        ['value' => number_format($totalViews ?? 0), 'label' => 'Reads'],
+    ];
+@endphp
+@foreach($heroStats as $stat)
+    <div><b>{{ number_format($stat['value']) }}</b><span>{{ e($stat['label']) }}</span></div>
+@endforeach
+                </div>
+            </div>
+
+            <!-- Right: animated dev scene -->
+            <div class="hero-scene" id="heroScene">
+                <div class="dev-scene" data-hero-el="card" aria-hidden="true">
+
+                    <div class="dev-float dev-float--chat" style="--x:6%; --y:14%; --dur:6.5s; --delay:-1s;">
+                        <i class="fas fa-quote-right"></i>
+                    </div>
+                    <div class="dev-float dev-float--gear" style="--x:2%; --y:56%; --dur:7.5s; --delay:-3.2s;">
+                        <i class="fas fa-gear"></i>
+                    </div>
+                    <div class="dev-float dev-float--check" style="--x:82%; --y:12%; --dur:6s; --delay:-2s;">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="dev-float dev-float--code" style="--x:84%; --y:58%; --dur:8s; --delay:-4.5s;">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <div class="dev-float dev-float--binary" style="--x:88%; --y:34%; --dur:9s; --delay:-1.6s;">
+                        <span>1010</span><span>0110</span><span>1101</span>
+                    </div>
+
+                    <svg class="dev-laptop-svg" viewBox="0 0 480 380" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="devPanelGrad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#f59e0b"/>
+                                <stop offset="100%" stop-color="#7c3aed"/>
+                            </linearGradient>
+                            <linearGradient id="devScreenGrad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#6d28d9"/>
+                                <stop offset="100%" stop-color="#3730a3"/>
+                            </linearGradient>
+                            <linearGradient id="devBaseGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#4c1d95"/>
+                                <stop offset="100%" stop-color="#2e1065"/>
+                            </linearGradient>
+                            <radialGradient id="devGlassGrad" cx="35%" cy="30%" r="75%">
+                                <stop offset="0%" stop-color="#ffffff" stop-opacity=".9"/>
+                                <stop offset="45%" stop-color="#cbd5e1" stop-opacity=".55"/>
+                                <stop offset="100%" stop-color="#64748b" stop-opacity=".35"/>
+                            </radialGradient>
+                        </defs>
+
+                        <!-- Side code panel peeking out behind the laptop -->
+                        <rect x="205" y="26" width="235" height="220" rx="14" fill="url(#devPanelGrad)" opacity=".88"/>
+                        <circle cx="345" cy="140" r="40" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="5" stroke-dasharray="7 8"/>
+                        <circle cx="345" cy="140" r="7" fill="rgba(255,255,255,.75)"/>
+                        <rect x="228" y="48" width="120" height="6" rx="3" fill="rgba(255,255,255,.4)"/>
+                        <rect x="228" y="64" width="80" height="6" rx="3" fill="rgba(255,255,255,.3)"/>
+                        <rect x="405" y="58" width="4" height="6" fill="rgba(255,255,255,.4)"/>
+                        <rect x="405" y="72" width="4" height="6" fill="rgba(255,255,255,.4)"/>
+                        <rect x="405" y="86" width="4" height="6" fill="rgba(255,255,255,.3)"/>
+                        <rect x="228" y="196" width="70" height="6" rx="3" fill="rgba(255,255,255,.35)"/>
+                        <rect x="228" y="212" width="100" height="6" rx="3" fill="rgba(255,255,255,.3)"/>
+
+                        <!-- Laptop screen -->
+                        <rect x="34" y="48" width="238" height="196" rx="16" fill="url(#devScreenGrad)"/>
+
+                        <!-- Browser card with code snippet -->
+                        <rect x="54" y="30" width="168" height="120" rx="10" fill="#f5f3ff"/>
+                        <circle cx="70" cy="45" r="4" fill="#f87171"/>
+                        <circle cx="83" cy="45" r="4" fill="#fbbf24"/>
+                        <circle cx="96" cy="45" r="4" fill="#34d399"/>
+                        <rect x="68" y="60" width="140" height="8" rx="4" fill="#7c3aed"/>
+                        <rect x="68" y="76" width="100" height="6" rx="3" fill="rgba(30,20,60,.35)"/>
+                        <rect x="80" y="90" width="110" height="6" rx="3" fill="#22d3ee"/>
+                        <rect x="80" y="104" width="80" height="6" rx="3" fill="rgba(30,20,60,.3)"/>
+                        <rect x="68" y="118" width="60" height="6" rx="3" fill="#7c3aed"/>
+                        <rect x="68" y="132" width="130" height="6" rx="3" fill="rgba(30,20,60,.25)"/>
+
+                        <!-- Keyboard / base -->
+                        <path d="M14 244 L292 244 L316 292 L-10 292 Z" fill="url(#devBaseGrad)"/>
+                        <ellipse cx="153" cy="304" rx="60" ry="10" fill="rgba(3,4,20,.4)"/>
+
+                        <!-- Magnifying glass — animated via GSAP -->
+                        <g id="devMagnifier" transform="translate(210,232) rotate(18)">
+                            <line x1="30" y1="30" x2="78" y2="78" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round"/>
+                            <circle r="46" fill="url(#devGlassGrad)" stroke="rgba(255,255,255,.55)" stroke-width="6"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+    {{-- =========================== END HERO SECTION ============================ --}}
+
+    <div class="max-w-6xl mx-auto px-4 py-8 page-content">
+
+        <h2 class="text-3xl font-bold mb-6" style="color:var(--paper)">Blog Posts</h2>
+
+        <!-- Posts toolbar: search + category filter dropdown (categories from $categories / DB) -->
+        <div class="posts-toolbar reveal-up">
+            <div class="posts-search-wrap">
+                <label for="postsSearchInput" class="sr-only">Search posts</label>
+                <input type="text" id="postsSearchInput" placeholder="Search posts..." aria-label="Search posts" oninput="filterPosts(this.value)">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+
+            <div class="filter-dropdown" id="categoryFilters">
+                <button
+                    type="button"
+                    class="filter-dropdown-btn"
+                    id="filterDropdownBtn"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="filterDropdownPanel"
+                    onclick="toggleFilterDropdown()"
+                >
+                    <i class="fas fa-sliders"></i>
+                    <span id="filterDropdownLabel">All Categories</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+
+                <div
+                    class="filter-dropdown-panel hidden"
+                    id="filterDropdownPanel"
+                    role="listbox"
+                    aria-label="Filter posts by category"
+                >
+                    <button
+                        type="button"
+                        class="filter-option active"
+                        data-category="all"
+                        role="option"
+                        aria-selected="true"
+                        onclick="filterByCategory('all', this)"
+                    >
+                        <span>All Categories</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                    @foreach($categories as $category)
+                    <button
+                        type="button"
+                        class="filter-option"
+                        data-category="{{ $category['slug'] }}"
+                        role="option"
+                        aria-selected="false"
+                        onclick="filterByCategory('{{ $category['slug'] }}', this)"
+                    >
+                        <span>{{ $category['name'] }}</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                    @endforeach
+                </div>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="postsGrid">
             @forelse($posts as $post)
-            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 post-card"
-                 data-title="{{ strtolower($post->title) }}"
-                 data-content="{{ strtolower($post->content) }}"
-                 data-category="{{ $post->category->slug ?? '' }}">
+            @php
+                $postImageUrl = null;
+                if (!empty($post['image'])) {
+                    $postImageUrl = Str::startsWith($post['image'], ['http://', 'https://'])
+                        ? $post['image']
+                        : asset('storage/' . $post['image']);
+                }
+            @endphp
+            <div class="glass post-card reveal-item"
+                 data-title="{{ strtolower($post['title']) }}"
+                 data-content="{{ strtolower($post['content']) }}"
+                 data-category="{{ $post['category']['slug'] ?? '' }}"
+                 onclick="window.location.href='{{ route('posts.show', $post['slug']) }}'">
+
+                {{-- ========== POST COVER IMAGE ========== --}}
+                <div class="card-img-wrap" onclick="event.stopPropagation(); window.location.href='{{ route('posts.show', $post['slug']) }}'">
+                    @if($postImageUrl)
+                        <img
+                            src="{{ $postImageUrl }}"
+                            alt="{{ $post['title'] }}"
+                            loading="lazy"
+                        >
+                    @else
+                        <div class="no-image">
+                            <i class="fas fa-image"></i>
+                        </div>
+                    @endif
+                </div>
+
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold text-blue-600 uppercase">{{ $post->category->name ?? 'Uncategorized' }}</span>
-                        <span class="text-xs text-gray-400">{{ number_format($post->views) }} views</span>
+                        <span class="cat">{{ e($post['category']['name'] ?? 'Uncategorized') }}</span>
+                        <span class="views">{{ number_format($post['views']) }} views</span>
                     </div>
-                    <h2 class="text-xl font-semibold text-gray-800 mb-2 hover:text-blue-600 transition-colors">
-                        <a href="/posts/{{ $post->slug }}">{{ $post->title }}</a>
-                    </h2>
-                    <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ Str::limit($post->excerpt, 120) }}</p>
-                    <div class="flex justify-between items-center text-sm text-gray-500">
-                        <span>{{ $post->published_at ? \Carbon\Carbon::parse($post->published_at)->format('M d, Y') : 'Draft' }}</span>
-                        <a href="/posts/{{ $post->slug }}" class="text-blue-600 hover:text-blue-800 font-medium">
-                            Read More →
-                        </a>
+                    <h2 class="text-xl font-semibold mb-2">
+    <a href="{{ route('posts.show', e($post['slug'])) }}">{{ e($post['title']) }}</a>
+</h2>
+                   <p class="text-sm mb-4 line-clamp-3">
+    {{ e(Str::limit(strip_tags($post['content'] ?? $post['excerpt'] ?? ''), 150)) }}
+</p>
+                    <div class="card-meta flex justify-between items-center text-sm pt-3" style="color:var(--mist)">
+                        <span>{{ $post['published_at'] ? \Carbon\Carbon::parse($post['published_at'])->format('M d, Y') : 'Draft' }}</span>
+                        <div class="flex items-center gap-2">
+                            <!-- Share Button - More prominent -->
+                            <button 
+                                onclick="event.stopPropagation(); sharePost('{{ route('posts.show', $post['slug']) }}', '{{ addslashes($post['title']) }}')"
+                                class="share-btn-card"
+                                aria-label="Share this post"
+                                title="Share this post"
+                            >
+                                <i class="fas fa-share-alt"></i>
+                                <span>Share</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             @empty
             <div class="col-span-full text-center py-12">
-                <p class="text-gray-500 text-lg">No published posts found.</p>
+                <p class="text-lg" style="color:var(--mist)">No published posts found.</p>
             </div>
             @endforelse
         </div>
 
-        <p id="noResults" class="hidden text-center text-gray-500 text-lg py-12">
+        <p id="noResults" class="hidden text-center text-lg py-12" style="color:var(--mist)">
             No posts match your search.
         </p>
 
         <!-- Pagination controls -->
-        <div id="paginationControls" class="flex items-center justify-center gap-4 mt-10">
-            <button
-                id="prevBtn"
-                onclick="changePage(-1)"
-                class="px-4 py-2 rounded-full border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
-            >
-                ← Previous
-            </button>
-            <span id="pageIndicator" class="text-sm text-gray-500 font-medium"></span>
-            <button
-                id="nextBtn"
-                onclick="changePage(1)"
-                class="px-4 py-2 rounded-full border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
-            >
-                Next →
-            </button>
-        </div>
-
-        @if($popularPosts->count() > 0)
-        <div class="mt-12">
-            <h3 class="text-2xl font-bold text-gray-800 mb-4">🔥 Popular Posts</h3>
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <ul class="space-y-3">
-                    @foreach($popularPosts as $post)
-                    <li class="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                        <a href="/posts/{{ $post->slug }}" class="text-gray-700 hover:text-blue-600 transition-colors">
-                            {{ $post->title }}
-                        </a>
-                        <span class="text-sm text-gray-500">{{ number_format($post->views) }} views</span>
-                    </li>
-                    @endforeach
-                </ul>
+<div id="paginationControls" class="flex items-center justify-center gap-4 mt-10">
+    <button 
+        id="prevBtn" 
+        onclick="changePage(-1)" 
+        class="pill-btn"
+        aria-label="Previous page"
+    >
+        ← Previous
+    </button>
+    <span id="pageIndicator" class="text-sm font-medium" style="color:var(--mist)"></span>
+    <button 
+        id="nextBtn" 
+        onclick="changePage(1)" 
+        class="pill-btn"
+        aria-label="Next page"
+    >
+        Next →
+    </button>
+</div>
+        {{-- ========== POPULAR POSTS ========== --}}
+        @if(count($popularPosts) > 0)
+        <div class="mt-16 reveal-up">
+            <div class="section-heading">
+                <span class="section-chip"><i class="fas fa-fire"></i></span>
+                <div>
+                    <span class="section-label">Trending</span>
+                    <h3 class="section-title">Popular Posts</h3>
+                </div>
+            </div>
+            <div class="rank-grid">
+                @foreach($popularPosts as $post)
+                <a href="{{ route('posts.show', $post['slug']) }}" class="rank-card reveal-item">
+                    <span class="rank-num">{{ sprintf('%02d', $loop->iteration) }}</span>
+                    <div class="rank-body">
+                        <h4>{{ e($post['title']) }}</h4>
+<p class="line-clamp-2">
+    {{ e(Str::limit(strip_tags($post['excerpt'] ?? $post['content'] ?? ''), 90)) }}
+</p>
+                    </div>
+                </a>
+                @endforeach
             </div>
         </div>
         @endif
 
-        <div class="mt-8 text-center text-sm text-gray-500">
-            <p>Total Posts: {{ $postCount }} | Total Views: {{ number_format($totalViews) }}</p>
+        {{-- ========== ALL REVIEWS ========== --}}
+        @if(count($allReviews) > 0)
+        @php
+            $avatarPalettes = [
+                ['#7c3aed', '#a78bfa'], ['#2563eb', '#60a5fa'], ['#0891b2', '#22d3ee'],
+                ['#6d28d9', '#818cf8'], ['#1d4ed8', '#38bdf8'], ['#0e7490', '#67e8f9'],
+            ];
+        @endphp
+        <div class="mt-16 reveal-up" id="reviewsSection">
+            <div class="section-heading">
+                <span class="section-chip"><i class="fas fa-comments"></i></span>
+                <div>
+                    <span class="section-label">Community</span>
+                    <h3 class="section-title">Reader Reviews <span class="count-badge">{{ count($allReviews) }}</span></h3>
+                </div>
+            </div>
+            <div class="glass reviews-grid-wrap p-6">
+                <div class="reviews-grid">
+                    @foreach($allReviews as $review)
+                    @php
+                        $rRating = $review['rating'] ?? 0;
+                        $rFullStars = (int) floor($rRating);
+                        $rHasHalf = ($rRating - $rFullStars) >= 0.5;
+                        $reviewerName = $review['user']['name'] ?? 'Anonymous';
+                        [$aC1, $aC2] = $avatarPalettes[$loop->index % count($avatarPalettes)];
+                    @endphp
+                    <a href="{{ route('posts.show', $review['post']['slug']) }}" class="review-card reveal-item">
+                        <i class="fas fa-quote-right review-quote-mark"></i>
+                        <div class="review-stars-row">
+                            <div class="flex items-center gap-0.5">
+                                @for($i = 1; $i <= 5; $i++)
+                                    @if($i <= $rFullStars)
+                                        <i class="fas fa-star" style="color:#fbbf24" aria-hidden="true"></i>
+                                    @elseif($i == $rFullStars + 1 && $rHasHalf)
+                                        <i class="fas fa-star-half-alt text-xs" style="color:#fbbf24"></i>
+                                    @else
+                                        <i class="far fa-star text-xs" style="color:rgba(255,255,255,.2)"></i>
+                                    @endif
+                                @endfor
+                            </div>
+                            @if(!empty($review['created_at']))
+                                <span class="review-time">
+                                    {{ \Carbon\Carbon::parse($review['created_at'])->diffForHumans() }}
+                                </span>
+                            @endif
+                        </div>
+
+                     <p class="review-quote">{{ e(Str::limit($review['review_text'] ?? '', 140)) }}</p>
+
+                        <div class="review-footer">
+                            <span class="review-avatar" style="background:linear-gradient(135deg,{{ $aC1 }},{{ $aC2 }})">
+                                {{ strtoupper(substr($reviewerName, 0, 1)) }}
+                            </span>
+                            <div class="review-footer-text">
+                                <span class="review-author">{{ e($reviewerName) }}</span>
+                                <span class="review-post-title">{{ e($review['post']['title']) }}</span>
+                            </div>
+                        </div>
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
+
+    </div>
+
+    {{-- ============================= FOOTER ============================= --}}
+    <footer class="site-footer">
+        <div class="max-w-6xl mx-auto px-4 footer-inner">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="{{ route('home') }}" class="nav-logo footer-logo">
+                        <span class="nav-logo-mark">
+                            <svg class="w-5 h-5" style="color:#67e8f9" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </span>
+                        <span class="nav-logo-text">NSential</span>
+                    </a>
+                    <p class="footer-tagline">
+                        Deep dives on Laravel, JavaScript, and the craft of building for the
+                        web — collected, curated, and shelved for whenever you need them.
+                    </p>
+<div class="footer-social">
+    <a href="mailto:nsential0@gmail.com" aria-label="Email"><i class="fas fa-envelope"></i></a>
+    <a href="https://github.com/bilal-157/" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+    <a href="https://www.linkedin.com/in/muhammadbilal711" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
+</div>
+                </div>
+
+                <div class="footer-col">
+                    <h5>Explore</h5>
+                    <ul>
+                        <li><a href="#postsGrid">All Posts</a></li>
+                        <li><a href="#categoryFilters">Categories</a></li>
+                        <li><a href="{{ route('about') }}">About</a></li>
+                        <li><a href="{{ route('contact') }}">Contact</a></li>
+                    </ul>
+                </div>
+
+                {{-- ========== RESOURCES SECTION - always shown, keeps the grid balanced ========== --}}
+                <div class="footer-col">
+                    <h5>Resources</h5>
+                    <ul>
+                        <li><a href="{{ url('/') }}/#" onclick="event.preventDefault(); openLegalModal('privacy')"><i class="fas fa-shield-halved"></i> Privacy Policy</a></li>
+                        <li><a href="{{ url('/') }}/#" onclick="event.preventDefault(); openLegalModal('terms')"><i class="fas fa-file-contract"></i> Terms of Service</a></li>
+                        <li><a href="{{ url('/') }}/#"><i class="fas fa-rss"></i> RSS Feed</a></li>
+                        <li><a href="{{ url('/') }}/#"><i class="fas fa-sitemap"></i> Sitemap</a></li>
+                    </ul>
+                </div>
+
+                {{-- ========== 4TH COLUMN - Newsletter for guests, Account summary for logged-in users
+                     so the footer stays visually balanced no matter who's viewing it ========== --}}
+                @guest
+                <div class="footer-col footer-newsletter">
+                    <h5>Stay in the loop</h5>
+                    <p>New articles, straight to your inbox. No spam, unsubscribe anytime.</p>
+                    <div class="footer-form">
+                        <a href="{{ route('login') }}"
+                           aria-label="Subscribe to the blog"
+                           class="grad-btn text-sm px-4 py-2 rounded-xl inline-block">
+                            Subscribe
+                        </a>
+                    </div>
+                </div>
+                @else
+                <div class="footer-col footer-account">
+                    <h5>Your Account</h5>
+                    <div class="footer-account-card">
+                        <span class="footer-account-avatar" style="background:linear-gradient(135deg,#7c3aed,#22d3ee)">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </span>
+                        <div class="footer-account-info">
+                            <span class="footer-account-name">{{ auth()->user()->name }}</span>
+                            <span class="footer-account-role">{{ ucfirst(auth()->user()->role) }}</span>
+                        </div>
+                    </div>
+                    <ul>
+                        @if(in_array(auth()->user()->role, ['author']))
+                            <li><a href="/profile"><i class="fas fa-user"></i> Your Profile</a></li>
+                        @endif
+                        @if(auth()->user()->role === 'admin')
+                            <li><a href="/admin"><i class="fas fa-gauge"></i> Admin Dashboard</a></li>
+                        @endif
+                        <li>
+                            <form method="POST" action="/logout" class="footer-logout-form">
+                                @csrf
+                                <button type="submit"><i class="fas fa-arrow-right-from-bracket"></i> Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                @endguest
+                {{-- ========== END 4TH COLUMN ========== --}}
+
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; {{ date('Y') }} NSential. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="{{ url('/') }}/#" onclick="event.preventDefault(); openLegalModal('privacy')">Privacy Policy</a>
+                    <a href="{{ url('/') }}/#" onclick="event.preventDefault(); openLegalModal('terms')">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    {{-- =========================== END FOOTER ============================ --}}
+
+    {{-- ============================= LEGAL MODALS (Privacy Policy / Terms of Service) ============================= --}}
+    <div class="legal-modal-overlay" id="privacyModalOverlay" role="dialog" aria-modal="true" aria-labelledby="privacyModalTitle">
+        <div class="legal-modal">
+            <div class="legal-modal-header">
+                <h3 id="privacyModalTitle"><i class="fas fa-shield-halved"></i> Privacy Policy</h3>
+                <button type="button" class="legal-modal-close" aria-label="Close privacy policy" onclick="closeLegalModal('privacy')">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="legal-modal-body">
+                <span class="legal-modal-updated">Last updated: {{ date('F Y') }}</span>
+                <p>This is placeholder text describing how NSential handles your information. Replace this section with your actual privacy policy before launching to real users.</p>
+
+                <h4>Information We Collect</h4>
+                <p>When you create an account, subscribe to updates, or leave a review, we store the details you provide — such as your name, email address, and any content you submit. We also collect basic usage data like pages viewed and articles read, which helps us understand what content resonates with readers.</p>
+
+                <h4>How We Use Your Data</h4>
+                <ul>
+                    <li>To create and maintain your account</li>
+                    <li>To send you new articles and updates, only if you've subscribed</li>
+                    <li>To display your reviews and comments alongside the posts they relate to</li>
+                    <li>To improve the site based on aggregated, anonymized reading patterns</li>
+                </ul>
+
+                <h4>Cookies</h4>
+                <p>We use a small number of cookies to keep you signed in and to remember your preferences, such as your last-viewed category filter. We don't use cookies for third-party advertising.</p>
+
+                <h4>Your Rights</h4>
+                <p>You can request a copy of your data, ask us to correct inaccuracies, or delete your account at any time by contacting us through the Contact page. Unsubscribing from emails takes effect immediately.</p>
+
+                <h4>Contact</h4>
+                <p>Questions about this placeholder policy can be directed to the site owner via the Contact page.</p>
+            </div>
+            <div class="legal-modal-footer">
+                <span>This is dummy content for demonstration purposes.</span>
+                <button type="button" onclick="closeLegalModal('privacy')">Close</button>
+            </div>
         </div>
     </div>
 
+    <div class="legal-modal-overlay" id="termsModalOverlay" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle">
+        <div class="legal-modal">
+            <div class="legal-modal-header">
+                <h3 id="termsModalTitle"><i class="fas fa-file-contract"></i> Terms of Service</h3>
+                <button type="button" class="legal-modal-close" aria-label="Close terms of service" onclick="closeLegalModal('terms')">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="legal-modal-body">
+                <span class="legal-modal-updated">Last updated: {{ date('F Y') }}</span>
+                <p>This is placeholder text outlining the terms for using NSential. Replace this section with your actual terms of service before launching to real users.</p>
+
+                <h4>Acceptance of Terms</h4>
+                <p>By creating an account or using this site, you agree to these terms. If you don't agree with any part of them, please don't use the site.</p>
+
+                <h4>User Accounts</h4>
+                <p>You're responsible for keeping your login credentials secure and for any activity that happens under your account. Let us know right away if you suspect unauthorized access.</p>
+
+                <h4>Content Ownership</h4>
+                <ul>
+                    <li>Articles and site design remain the property of NSential</li>
+                    <li>Reviews and comments you submit remain yours, but you grant us permission to display them alongside the related post</li>
+                    <li>You may not republish full articles elsewhere without permission</li>
+                </ul>
+
+                <h4>Prohibited Uses</h4>
+                <p>Please don't use the site to post spam, harassing content, or anything unlawful. We reserve the right to remove content or suspend accounts that violate these terms.</p>
+
+                <h4>Termination</h4>
+                <p>You may delete your account at any time. We may suspend accounts that repeatedly violate these terms after a warning.</p>
+
+                <h4>Governing Law</h4>
+                <p>These placeholder terms are provided as a starting template and don't constitute legal advice — consult a lawyer before publishing real terms of service.</p>
+            </div>
+            <div class="legal-modal-footer">
+                <span>This is dummy content for demonstration purposes.</span>
+                <button type="button" onclick="closeLegalModal('terms')">Close</button>
+            </div>
+        </div>
+    </div>
+    {{-- =========================== END LEGAL MODALS ============================ --}}
+
+    {{-- ============================= SHARE MODAL ============================= --}}
+    <div class="share-modal-overlay" id="shareModal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
+        <div class="share-modal">
+            <div class="share-modal-header">
+                <h3 id="shareModalTitle">
+                    <i class="fas fa-share-alt" style="color:var(--cyan)"></i> 
+                    Share this post
+                </h3>
+                <button type="button" class="share-modal-close" onclick="closeShareModal()" aria-label="Close share dialog">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            
+<div class="share-url-wrapper">
+    <label for="shareUrlInput" class="sr-only">Shareable link to this post</label>
+    <input type="text" id="shareUrlInput" readonly class="share-url-input" value="">
+    <button onclick="copyShareLink()" class="share-copy-btn" id="copyShareBtn" aria-label="Copy link to clipboard">
+        <i class="fas fa-copy"></i> Copy
+    </button>
+</div>
+                
+            <!-- ===== SHARE MODAL SOCIAL BUTTONS ===== -->
+<div class="share-buttons-grid">
+    <!-- WhatsApp -->
+    <button 
+        onclick="shareToWhatsApp()" 
+        class="share-btn whatsapp"
+        aria-label="Share on WhatsApp"
+    >
+        <i class="fab fa-whatsapp" aria-hidden="true"></i>
+        <span>WhatsApp</span>
+    </button>
+    
+    <!-- Instagram -->
+    <button 
+        onclick="shareToInstagram()" 
+        class="share-btn instagram"
+        aria-label="Share on Instagram"
+    >
+        <i class="fab fa-instagram" aria-hidden="true"></i>
+        <span>Instagram</span>
+    </button>
+    
+    <!-- Twitter/X -->
+    <button 
+        onclick="shareToTwitter()" 
+        class="share-btn twitter"
+        aria-label="Share on Twitter X"
+    >
+        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="display:inline-block;vertical-align:middle;" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        <span>Twitter/X</span>
+    </button>
+    
+    <!-- Facebook -->
+    <button 
+        onclick="shareToFacebook()" 
+        class="share-btn facebook"
+        aria-label="Share on Facebook"
+    >
+        <i class="fab fa-facebook" aria-hidden="true"></i>
+        <span>Facebook</span>
+    </button>
+    
+    <!-- LinkedIn -->
+    <button 
+        onclick="shareToLinkedIn()" 
+        class="share-btn linkedin"
+        aria-label="Share on LinkedIn"
+    >
+        <i class="fab fa-linkedin" aria-hidden="true"></i>
+        <span>LinkedIn</span>
+    </button>
+    
+    <!-- Email -->
+    <button 
+        onclick="shareToEmail()" 
+        class="share-btn email"
+        aria-label="Share via Email"
+    >
+        <i class="fas fa-envelope" aria-hidden="true"></i>
+        <span>Email</span>
+    </button>
+    
+    <!-- Telegram -->
+    <button 
+        onclick="shareToTelegram()" 
+        class="share-btn telegram"
+        aria-label="Share on Telegram"
+    >
+        <i class="fab fa-telegram" aria-hidden="true"></i>
+        <span>Telegram</span>
+    </button>
+    
+    <!-- Copy Link -->
+    <button 
+        onclick="copyShareLink()" 
+        class="share-btn copy-link"
+        aria-label="Copy link to clipboard"
+    >
+        <i class="fas fa-link" aria-hidden="true"></i>
+        <span>Copy Link</span>
+    </button>
+</div>
+    {{-- =========================== END SHARE MODAL ============================ --}}
+
     <script>
         const POSTS_PER_PAGE = 9;
+        const GRID_FADE_MS = 180; // matches the #postsGrid opacity transition in CSS
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         let currentPage = 1;
         let isSearching = false;
         let activeCategory = 'all';
+
+        const postsGrid = document.getElementById('postsGrid');
 
         function getAllCards() {
             return Array.from(document.querySelectorAll('.post-card'));
@@ -199,8 +2165,23 @@
             return cards.filter(card => card.dataset.category === activeCategory);
         }
 
+        // Wraps a DOM-mutating render function in a quick crossfade so the
+        // grid re-flows smoothly on page change / filter / search instead of
+        // popping instantly. Skips the fade entirely when the visitor has
+        // asked for reduced motion.
+        function withGridFade(applyChanges) {
+            if (prefersReducedMotion || !postsGrid) {
+                applyChanges();
+                return;
+            }
+            postsGrid.classList.add('is-transitioning');
+            window.setTimeout(() => {
+                applyChanges();
+                requestAnimationFrame(() => postsGrid.classList.remove('is-transitioning'));
+            }, GRID_FADE_MS);
+        }
+
         function renderPage() {
-            // Only paginate within the active category
             const allCards = getAllCards();
             const categoryCards = getCategoryFilteredCards();
 
@@ -222,43 +2203,86 @@
             document.getElementById('nextBtn').disabled = currentPage === totalPages;
             document.getElementById('paginationControls').classList.toggle('hidden', categoryCards.length === 0);
             document.getElementById('noResults').classList.toggle('hidden', categoryCards.length !== 0);
+
+            if (window.refreshPostReveals) window.refreshPostReveals();
         }
 
         function changePage(direction) {
+            if (direction === -1 && document.getElementById('prevBtn').disabled) return;
+            if (direction === 1 && document.getElementById('nextBtn').disabled) return;
             currentPage += direction;
-            renderPage();
+            withGridFade(renderPage);
             document.getElementById('navbar').style.transform = 'translateY(0)';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
         }
 
-        function filterByCategory(category, btnEl) {
-            activeCategory = category;
-            currentPage = 1;
+        function filterByCategory(category, optionEl) {
+            const dropdownBtn = document.getElementById('filterDropdownBtn');
+            const dropdownLabel = document.getElementById('filterDropdownLabel');
 
-            // Reset search when switching category
-            document.getElementById('searchInput').value = '';
-            isSearching = false;
+            if (category !== activeCategory) {
+                activeCategory = category;
+                currentPage = 1;
 
-            // Update active button styles
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                btn.classList.add('border-gray-300', 'text-gray-600');
-            });
-            btnEl.classList.remove('border-gray-300', 'text-gray-600');
-            btnEl.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+                document.getElementById('postsSearchInput').value = '';
+                isSearching = false;
 
-            renderPage();
+                document.querySelectorAll('.filter-option').forEach(opt => {
+                    opt.classList.remove('active');
+                    opt.setAttribute('aria-selected', 'false');
+                });
+                optionEl.classList.add('active');
+                optionEl.setAttribute('aria-selected', 'true');
+
+                dropdownLabel.textContent = optionEl.querySelector('span').textContent;
+                dropdownBtn.classList.toggle('has-active', category !== 'all');
+
+                withGridFade(renderPage);
+            }
+
+            closeFilterDropdown();
         }
 
-        function filterPosts(query) {
-            const term = query.trim().toLowerCase();
+        function toggleFilterDropdown() {
+            const panel = document.getElementById('filterDropdownPanel');
+            const btn = document.getElementById('filterDropdownBtn');
+            const willOpen = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden');
+            document.getElementById('categoryFilters').classList.toggle('open', willOpen);
+            btn.setAttribute('aria-expanded', String(willOpen));
+        }
+
+        function closeFilterDropdown() {
+            const panel = document.getElementById('filterDropdownPanel');
+            const btn = document.getElementById('filterDropdownBtn');
+            panel.classList.add('hidden');
+            document.getElementById('categoryFilters').classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+
+        document.addEventListener('click', function (e) {
+            const dropdown = document.getElementById('categoryFilters');
+            if (!dropdown) return;
+            if (!dropdown.contains(e.target)) {
+                closeFilterDropdown();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            const panel = document.getElementById('filterDropdownPanel');
+            if (!panel || panel.classList.contains('hidden')) return;
+            closeFilterDropdown();
+            document.getElementById('filterDropdownBtn').focus();
+        });
+
+        function applySearch(term) {
             const cards = getCategoryFilteredCards();
             isSearching = term.length > 0;
 
             let visibleCount = 0;
 
             if (isSearching) {
-                // While searching: show all matches within active category, ignore pagination
                 getAllCards().forEach(card => card.style.display = 'none');
                 cards.forEach(card => {
                     const title = card.dataset.title || '';
@@ -269,6 +2293,7 @@
                 });
                 document.getElementById('paginationControls').classList.add('hidden');
                 document.getElementById('noResults').classList.toggle('hidden', visibleCount !== 0);
+                if (window.refreshPostReveals) window.refreshPostReveals();
             } else {
                 document.getElementById('noResults').classList.add('hidden');
                 currentPage = 1;
@@ -276,8 +2301,28 @@
             }
         }
 
+        // Debounced so every keystroke doesn't trigger a full re-render —
+        // waits for a short pause in typing, which keeps the input itself
+        // perfectly responsive while the grid only updates once.
+        let searchDebounceId = null;
+        function filterPosts(query) {
+            const term = query.trim().toLowerCase().replace(/[<>]/g, '');
+            window.clearTimeout(searchDebounceId);
+            searchDebounceId = window.setTimeout(() => {
+                withGridFade(() => applySearch(term));
+            }, 150);
+        }
+
         function toggleUserMenu() {
-            document.getElementById('userMenu').classList.toggle('hidden');
+            const menu = document.getElementById('userMenu');
+            const btn = document.getElementById('userMenuBtn');
+            const willOpen = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden');
+            btn.setAttribute('aria-expanded', String(willOpen));
+            if (willOpen) {
+                const firstItem = menu.querySelector('a, button');
+                if (firstItem) firstItem.focus();
+            }
         }
 
         document.addEventListener('click', function (e) {
@@ -286,6 +2331,112 @@
             if (!menu || !btn) return;
             if (!menu.contains(e.target) && !btn.contains(e.target)) {
                 menu.classList.add('hidden');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Close the account menu on Escape and hand focus back to its trigger,
+        // matching standard disclosure-menu keyboard behavior.
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            const menu = document.getElementById('userMenu');
+            const btn = document.getElementById('userMenuBtn');
+            if (!menu || menu.classList.contains('hidden')) return;
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.focus();
+        });
+
+        // ---------- Legal modals (Privacy Policy / Terms of Service) ----------
+        function getLegalModal(type) {
+            return document.getElementById(type === 'privacy' ? 'privacyModalOverlay' : 'termsModalOverlay');
+        }
+
+        function openLegalModal(type) {
+            const modal = getLegalModal(type);
+            if (!modal) return;
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            const closeBtn = modal.querySelector('.legal-modal-close');
+            if (closeBtn) closeBtn.focus();
+        }
+
+        function closeLegalModal(type) {
+            const modal = getLegalModal(type);
+            if (!modal) return;
+            modal.classList.remove('open');
+            if (!document.querySelector('.legal-modal-overlay.open')) {
+                document.body.style.overflow = '';
+            }
+        }
+
+        document.querySelectorAll('.legal-modal-overlay').forEach((overlay) => {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) {
+                    overlay.classList.remove('open');
+                    if (!document.querySelector('.legal-modal-overlay.open')) {
+                        document.body.style.overflow = '';
+                    }
+                }
+            });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            document.querySelectorAll('.legal-modal-overlay.open').forEach((overlay) => {
+                overlay.classList.remove('open');
+            });
+            document.body.style.overflow = '';
+        });
+
+        // ---------- Mobile hamburger nav ----------
+        function toggleMobileNav() {
+            const panel = document.getElementById('mobileNavPanel');
+            const btn = document.getElementById('navToggleBtn');
+            const willOpen = !panel.classList.contains('open');
+            panel.classList.toggle('open', willOpen);
+            btn.setAttribute('aria-expanded', String(willOpen));
+        }
+
+        function closeMobileNav() {
+            const panel = document.getElementById('mobileNavPanel');
+            const btn = document.getElementById('navToggleBtn');
+            panel.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+
+        // Close the mobile menu on outside click, Escape, or when the
+        // viewport is resized back up to desktop width.
+        document.addEventListener('click', function (e) {
+            const panel = document.getElementById('mobileNavPanel');
+            const btn = document.getElementById('navToggleBtn');
+            if (!panel || !btn) return;
+            if (!panel.classList.contains('open')) return;
+            if (!panel.contains(e.target) && !btn.contains(e.target)) {
+                closeMobileNav();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            const panel = document.getElementById('mobileNavPanel');
+            const btn = document.getElementById('navToggleBtn');
+            if (!panel || !panel.classList.contains('open')) return;
+            closeMobileNav();
+            btn.focus();
+        });
+
+        window.addEventListener('resize', function () {
+            if (window.innerWidth >= 768) closeMobileNav();
+        });
+
+        // Fade cover images in as they finish loading, and immediately mark
+        // any that were already cached so they don't sit at opacity 0.
+        document.querySelectorAll('.card-img-wrap img, .cover-img img').forEach((img) => {
+            if (img.complete) {
+                img.classList.add('is-loaded');
+            } else {
+                img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
             }
         });
 
@@ -304,6 +2455,7 @@
                 } else if (Math.abs(delta) > threshold) {
                     if (delta > 0) {
                         navbar.style.transform = 'translateY(-100%)';
+                        closeMobileNav();
                     } else {
                         navbar.style.transform = 'translateY(0)';
                     }
@@ -321,8 +2473,364 @@
             }, { passive: true });
         })();
 
+        // ===================== SHARE FUNCTIONALITY =====================
+        let currentShareUrl = '';
+        let currentShareTitle = '';
+
+        function sharePost(url, title) {
+            currentShareUrl = url;
+            currentShareTitle = title;
+            const modal = document.getElementById('shareModal');
+            const input = document.getElementById('shareUrlInput');
+            
+            // Set the URL in the input
+            input.value = url;
+            
+            // Open modal
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            
+            // Focus the input for easy copying
+            setTimeout(() => input.select(), 100);
+        }
+
+        function closeShareModal() {
+            const modal = document.getElementById('shareModal');
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+            
+            // Reset copy button
+            const copyBtn = document.getElementById('copyShareBtn');
+            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            copyBtn.classList.remove('copied');
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('shareUrlInput');
+            const btn = document.getElementById('copyShareBtn');
+            
+            // Select and copy
+            input.select();
+            input.setSelectionRange(0, 99999);
+            
+            try {
+                navigator.clipboard.writeText(input.value).then(() => {
+                    // Success feedback
+                    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    btn.classList.add('copied');
+                    showToast('Link copied to clipboard!');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    document.execCommand('copy');
+                    showToast('Link copied to clipboard!');
+                });
+            } catch (e) {
+                // Fallback
+                document.execCommand('copy');
+                showToast('Link copied to clipboard!');
+            }
+        }
+
+// Social share functions - Updated for cleaner messages
+function shareToWhatsApp() {
+    const text = `📝 ${currentShareTitle}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text + ' ' + currentShareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=500');
+}
+
+function shareToTwitter() {
+    const text = `📝 ${currentShareTitle}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(currentShareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=500');
+}
+
+function shareToFacebook() {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=500');
+}
+
+function shareToLinkedIn() {
+    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentShareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=500');
+}
+
+function shareToEmail() {
+    const subject = encodeURIComponent(`Check out: ${currentShareTitle}`);
+    const body = encodeURIComponent(`I thought you might find this interesting:\n\n${currentShareTitle}\n${currentShareUrl}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function shareToTelegram() {
+    const text = `📝 ${currentShareTitle}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(currentShareUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'width=600,height=500');
+}
+
+function shareToInstagram() {
+    // Instagram doesn't support direct URL sharing via web
+    copyShareLink();
+    showToast('📸 Copy the link and share it on Instagram!');
+}
+        // Toast notification
+        function showToast(message) {
+            // Remove existing toast
+            const existingToast = document.querySelector('.share-toast');
+            if (existingToast) existingToast.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = 'share-toast';
+            toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            document.body.appendChild(toast);
+            
+            // Show with delay
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Hide and remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('shareModal');
+                if (modal && modal.classList.contains('open')) {
+                    closeShareModal();
+                }
+            }
+        });
+
+        // Close modal on outside click
+        document.getElementById('shareModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeShareModal();
+            }
+        });
+
         renderPage();
     </script>
 
+    {{-- ============================= HERO + PAGE-WIDE GSAP SCRIPT ============================= --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const field = document.getElementById('bookFieldGlobal');
+        const scene = document.getElementById('heroScene');
+        const heroSection = document.getElementById('heroShelf');
+        const navbar = document.getElementById('navbar');
+
+        /* ---------------- Ambient book field — now spans the full page ---------------- */
+        const palettes = [
+            ['#7c3aed', '#a78bfa'],
+            ['#2563eb', '#60a5fa'],
+            ['#0891b2', '#22d3ee'],
+            ['#6d28d9', '#818cf8'],
+            ['#1d4ed8', '#38bdf8'],
+            ['#0e7490', '#67e8f9'],
+        ];
+
+        // Fewer floating books on small/narrow viewports and on devices that
+        // report a low core count — keeps the ambient scene smooth instead
+        // of competing with the rest of the page for frames on cheaper hardware.
+        const isCompactViewport = window.matchMedia('(max-width: 768px)').matches;
+        const isLowPower = (navigator.hardwareConcurrency || 8) <= 4;
+        const BOOK_COUNT = isCompactViewport ? 7 : (isLowPower ? 10 : 16);
+        const books = [];
+
+        if (field) {
+            for (let i = 0; i < BOOK_COUNT; i++) {
+                const depth = i / (BOOK_COUNT - 1);
+                const size = 40 + depth * 56;
+                const blurAmt = (1 - depth) * 4;
+                const opacity = 0.32 + depth * 0.5;
+                const [c1, c2] = palettes[i % palettes.length];
+
+                const el = document.createElement('div');
+                el.className = 'book';
+                el.style.width = size + 'px';
+                el.style.height = (size * 1.34) + 'px';
+                // Spread books across the entire viewport (vw/vh), not just the hero box
+                el.style.left = (2 + Math.random() * 92) + 'vw';
+                el.style.top = (4 + Math.random() * 88) + 'vh';
+                el.style.filter = `blur(${blurAmt.toFixed(1)}px)`;
+                el.style.opacity = opacity.toFixed(2);
+                el.dataset.depth = depth.toFixed(2);
+                el.dataset.axis = Math.random() > 0.5 ? 'x' : 'y';
+
+                const cover = document.createElement('div');
+                cover.className = 'book-cover';
+                cover.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+                cover.innerHTML = '<span class="title-line"></span><span class="title-line s"></span>';
+                el.appendChild(cover);
+
+                field.appendChild(el);
+                books.push(el);
+            }
+        }
+
+        if (typeof gsap === 'undefined') return;
+        gsap.registerPlugin(ScrollTrigger);
+
+        /* ---------------- Hero entrance timeline ---------------- */
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+        tl.from('[data-hero-el="eyebrow"]', { opacity: 0, y: 14, duration: .6 })
+          .from('[data-hero-el="heading"]', { opacity: 0, y: 26, duration: .8 }, '-=.35')
+          .from('[data-hero-el="sub"]', { opacity: 0, y: 20, duration: .7 }, '-=.5')
+          .from('[data-hero-el="ctas"] a', { opacity: 0, y: 16, duration: .55, stagger: .12 }, '-=.4')
+          .from('[data-hero-el="stats"] > div', { opacity: 0, y: 14, duration: .5, stagger: .1 }, '-=.35')
+          .from(books, { opacity: 0, scale: .7, duration: .9, stagger: .04, ease: 'back.out(1.4)' }, '-=.6')
+          .from('[data-hero-el="card"]', { opacity: 0, y: 30, scale: .96, duration: .8 }, '-=.7')
+          .from('[data-nav-el]', { opacity: 0, y: -10, duration: .5, stagger: .1 }, '-=1.2');
+
+        /* ---------------- Dev scene: magnifying glass scans across the code,
+           and the whole scene gets a gentle idle sway ---------------- */
+        const devMagnifier = document.getElementById('devMagnifier');
+        if (devMagnifier && !prefersReduced) {
+            gsap.to(devMagnifier, {
+                x: -70,
+                y: -40,
+                rotation: -8,
+                duration: 3.2,
+                ease: 'sine.inOut',
+                repeat: -1,
+                yoyo: true,
+                transformOrigin: 'center center',
+            });
+        }
+        const devLaptop = document.querySelector('.dev-laptop-svg');
+        if (devLaptop && !prefersReduced) {
+            gsap.to(devLaptop, {
+                y: -10,
+                rotation: 1.2,
+                duration: 4,
+                ease: 'sine.inOut',
+                repeat: -1,
+                yoyo: true,
+                transformOrigin: 'center center',
+            });
+        }
+
+        /* ---------------- Ambient float — runs continuously, whole page ---------------- */
+        if (!prefersReduced) {
+            books.forEach((book) => {
+                const axis = book.dataset.axis;
+                const depth = parseFloat(book.dataset.depth);
+                const travel = gsap.utils.random(22, 60) * (0.6 + depth * 0.7);
+                const duration = gsap.utils.random(5, 10);
+                const delay = gsap.utils.random(0, 2.5);
+
+                gsap.set(book, { force3D: true });
+
+                gsap.to(book, {
+                    [axis === 'x' ? 'x' : 'y']: (Math.random() > 0.5 ? 1 : -1) * travel,
+                    duration, delay, ease: 'sine.inOut', repeat: -1, yoyo: true,
+                });
+
+                gsap.to(book, {
+                    rotationX: gsap.utils.random(-18, 18),
+                    rotationY: gsap.utils.random(-22, 22),
+                    rotationZ: gsap.utils.random(-10, 10),
+                    duration: gsap.utils.random(6, 12),
+                    delay, ease: 'sine.inOut', repeat: -1, yoyo: true,
+                });
+            });
+
+            // Gentle whole-page parallax: the field drifts and settles as the
+            // entire document scrolls, so the motion reads as one continuous
+            // scene rather than something that stops when the hero ends.
+            gsap.to(field, {
+                yPercent: -6,
+                scale: 1.04,
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: document.body,
+                    start: 'top top',
+                    end: 'bottom bottom',
+                    scrub: 0.8,
+                },
+            });
+
+            // Fade the books down to something quieter once the reader is deep
+            // into the archive, so long-form text stays easy to read, then
+            // let them settle back in near the footer.
+            if (heroSection && field) {
+                gsap.to(field, {
+                    opacity: 0.45,
+                    scrollTrigger: {
+                        trigger: heroSection,
+                        start: 'bottom top',
+                        end: '+=600',
+                        scrub: 0.8,
+                    },
+                });
+            }
+        } else {
+            gsap.set(books, { rotationX: 0, rotationY: 0, rotationZ: 0 });
+        }
+
+        /* ---------------- Pause ambient motion while the tab is hidden ---------------- */
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                gsap.globalTimeline.pause();
+            } else {
+                gsap.globalTimeline.resume();
+            }
+        });
+
+        /* ---------------- Navbar micro-interaction: shrink slightly on scroll ---------------- */
+        if (navbar) {
+            ScrollTrigger.create({
+                start: 'top -80',
+                end: 99999,
+                onUpdate: (self) => {
+                    navbar.style.boxShadow = self.progress > 0
+                        ? '0 10px 30px rgba(3,4,20,.45)'
+                        : 'none';
+                },
+            });
+        }
+
+        /* ---------------- Scroll reveals across the archive section ---------------- */
+        gsap.utils.toArray('.reveal-up').forEach((el) => {
+            gsap.to(el, {
+                opacity: 1, y: 0, duration: .7, ease: 'power3.out',
+                scrollTrigger: { trigger: el, start: 'top 88%', once: true },
+            });
+        });
+
+        // Batch the post-card grid so cards entering the viewport stagger in,
+        // and re-run cleanly whenever pagination/search/category filtering
+        // changes which cards are visible.
+        ScrollTrigger.batch('.reveal-item', {
+            start: 'top 90%',
+            once: true,
+            onEnter: (elements) => {
+                gsap.to(elements, { opacity: 1, y: 0, duration: .6, stagger: .08, ease: 'power3.out' });
+            },
+        });
+
+        // Whenever the grid re-renders (page change, search, category swap),
+        // give freshly-shown cards their reveal state back and ask
+        // ScrollTrigger to re-measure the page.
+        window.refreshPostReveals = function () {
+            document.querySelectorAll('.post-card.reveal-item').forEach((card) => {
+                if (card.style.display !== 'none') {
+                    gsap.set(card, { clearProps: 'opacity,transform' });
+                    card.classList.remove('reveal-item');
+                }
+            });
+            ScrollTrigger.refresh();
+        };
+    });
+    </script>
+    {{-- =========================== END HERO + PAGE-WIDE GSAP SCRIPT ============================ --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </body>
 </html>
