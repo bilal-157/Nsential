@@ -25,7 +25,7 @@ This project was developed with a strong focus on **performance**, **security**,
 - **📝 Post Management** – Create, edit, publish, and delete blog posts with ease
 - **🏷️ Category System** – Organize content into categories for better navigation
 - **👤 User Profiles** – Manage user accounts and roles
-- **🔍 SEO-Friendly** – Clean URLs and metadata support
+- **🔍 SEO-Friendly** – Clean URLs and metadata support 
 
 ### For Developers & Admins
 - **🐳 Docker Ready** – Pre-configured for containerized development & production
